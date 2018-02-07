@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Lykke.Common" Version="4.2.0" />
+    <PackageReference Include="nstratis" Version="4.0.0.34" />
   </ItemGroup>
 
   <ItemGroup>
