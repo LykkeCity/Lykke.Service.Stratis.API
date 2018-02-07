@@ -47,10 +47,7 @@ namespace Lykke.Service.Stratis.API.Modules
                 .As<IShutdownManager>();
 
             // TODO: Add your dependencies here
-            builder.RegisterType<StratisService>()
-                .As<IStratisService>()
-                .SingleInstance()
-                .WithParameter("network", _settings.CurrentValue.Network);
+
             builder.Populate(_services);
         }
     }
