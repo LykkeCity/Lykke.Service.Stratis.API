@@ -8,12 +8,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Domain\" />
+    <Compile Remove="Domain\Asset.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Services\" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Asset.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Lykke.Common" Version="4.2.0" />
+    <PackageReference Include="nstratis" Version="4.0.0.34" />
   </ItemGroup>
 
 </Project>
