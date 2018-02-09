@@ -21,7 +21,6 @@ namespace Lykke.Service.Stratis.API.Modules
         {
             _settings = settings;
             _log = log;
-
             _services = new ServiceCollection();
         }
 
@@ -37,8 +36,6 @@ namespace Lykke.Service.Stratis.API.Modules
                 .As<ILog>()
                 .SingleInstance();
 
-
-
             builder.RegisterType<StartupManager>()
                 .As<IStartupManager>();
 
@@ -50,6 +47,11 @@ namespace Lykke.Service.Stratis.API.Modules
                             .As<IStratisService>()
                 .WithParameter(TypedParameter.From(_settings.CurrentValue))
                             .SingleInstance();
+
+            builder.RegisterType<StratisInsightClient>()
+                .As<IStratisInsightClient>()
+                .WithParameter("url", _settings.CurrentValue.InsightApiUrl)
+                .SingleInstance();
 
             builder.Populate(_services);
         }

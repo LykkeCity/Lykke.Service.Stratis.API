@@ -7,10 +7,10 @@ namespace Lykke.Service.Stratis.API.Core
 {
     public class Asset
     {
-        public Asset(string id, int decimalPlaces, MoneyUnit unit) => (Id, DecimalPlaces, Unit) = (id, decimalPlaces, unit);
+        public Asset(string id, int decimalPlaces, MoneyUnit unit) => (Id, Accuracy, Unit) = (id, decimalPlaces, unit);
 
         public string Id { get; }
-        public int DecimalPlaces { get; }
+        public int Accuracy { get; }
         public MoneyUnit Unit { get; }
 
         // static instances (constants)

@@ -86,5 +86,25 @@ namespace Lykke.Service.Stratis.API.Models
         {
             return new ErrorResponse(message);
         }
+
+        public static ErrorResponse Create(string errorMessage, ModelStateDictionary modelState)
+        {
+            var response = new ErrorResponse(errorMessage);
+
+            foreach (var state in modelState)
+            {
+                var messages = state.Value.Errors
+                    .Where(e => !string.IsNullOrWhiteSpace(e.ErrorMessage))
+                    .Select(e => e.ErrorMessage)
+                    .Concat(state.Value.Errors
+                        .Where(e => string.IsNullOrWhiteSpace(e.ErrorMessage))
+                        .Select(e => e.Exception.Message))
+                    .ToList();
+
+                response.ModelErrors.Add(state.Key, messages);
+            }
+
+            return response;
+        }
     }
 }

@@ -12,7 +12,7 @@ namespace Lykke.Service.Stratis.API.Helper
         {
             return new AssetResponse
             {
-                Accuracy = self.DecimalPlaces,
+                Accuracy = self.Accuracy,
                 Address = string.Empty,
                 AssetId = self.Id,
                 Name = self.Id
