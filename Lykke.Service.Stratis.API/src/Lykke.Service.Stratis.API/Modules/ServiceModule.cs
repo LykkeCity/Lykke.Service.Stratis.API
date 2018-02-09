@@ -2,6 +2,7 @@
 using Autofac.Extensions.DependencyInjection;
 using Common.Log;
 using Lykke.Service.Stratis.API.Core.Services;
+using Lykke.Service.Stratis.API.Core.Settings;
 using Lykke.Service.Stratis.API.Core.Settings.ServiceSettings;
 using Lykke.Service.Stratis.API.Services;
 using Lykke.SettingsReader;
@@ -36,9 +37,7 @@ namespace Lykke.Service.Stratis.API.Modules
                 .As<ILog>()
                 .SingleInstance();
 
-            builder.RegisterType<HealthService>()
-                .As<IHealthService>()
-                .SingleInstance();
+
 
             builder.RegisterType<StartupManager>()
                 .As<IStartupManager>();
@@ -47,6 +46,10 @@ namespace Lykke.Service.Stratis.API.Modules
                 .As<IShutdownManager>();
 
             // TODO: Add your dependencies here
+            builder.RegisterType<StratisService>()
+                            .As<IStratisService>()
+                .WithParameter(TypedParameter.From(_settings.CurrentValue))
+                            .SingleInstance();
 
             builder.Populate(_services);
         }
