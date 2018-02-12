@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Flurl.Http;
+using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Services.Helper;
 
@@ -20,6 +21,27 @@ namespace Lykke.Service.Stratis.API.Services
             _log = log;
             _url = url;
         }
+
+        public async Task<TxBroadcast> BroadcastTxAsync(string transactionHex)
+        {
+            var url = $"{_url}/tx/send";
+            var data = new { rawtx = transactionHex };
+
+            try
+            {
+                return await url
+                    .PostJsonAsync(data)
+                    .ReceiveJson<TxBroadcast>();
+            }
+            catch (Exception ex)
+            {
+                await _log.WriteErrorAsync(nameof(StratisInsightClient), nameof(BroadcastTxAsync),
+                    $"Failed to post json for url='{url}' and data='{data}'", ex);
+
+                throw;
+            }
+        }
+
 
         public async Task<ulong> GetBalanceSatoshis(string address)
         {

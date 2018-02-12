@@ -1,6 +1,9 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Common.Log;
+using Lykke.Service.Stratis.API.AzureRepositories.Broadcast;
+using Lykke.Service.Stratis.API.AzureRepositories.BroadcastInprogress;
+using Lykke.Service.Stratis.API.Core.Repositories;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
 using Lykke.Service.Stratis.API.Core.Settings.ServiceSettings;
@@ -31,6 +34,7 @@ namespace Lykke.Service.Stratis.API.Modules
             //  builder.RegisterType<QuotesPublisher>()
             //      .As<IQuotesPublisher>()
             //      .WithParameter(TypedParameter.From(_settings.CurrentValue.QuotesPublication))
+            var connectionStringManager = _settings.ConnectionString(x => x.Db.DataConnString);
 
             builder.RegisterInstance(_log)
                 .As<ILog>()
@@ -52,6 +56,17 @@ namespace Lykke.Service.Stratis.API.Modules
                 .As<IStratisInsightClient>()
                 .WithParameter("url", _settings.CurrentValue.InsightApiUrl)
                 .SingleInstance();
+
+            builder.RegisterType<BroadcastRepository>()
+                .As<IBroadcastRepository>()
+                .WithParameter(TypedParameter.From(connectionStringManager))
+                .SingleInstance();
+
+            builder.RegisterType<BroadcastInProgressRepository>()
+                .As<IBroadcastInProgressRepository>()
+                .WithParameter(TypedParameter.From(connectionStringManager))
+                .SingleInstance();
+
 
             builder.Populate(_services);
         }

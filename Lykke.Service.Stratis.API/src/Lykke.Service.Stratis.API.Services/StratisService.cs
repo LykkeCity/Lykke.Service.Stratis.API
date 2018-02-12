@@ -4,6 +4,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Service.Stratis.API.Core;
+using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
+using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
+using Lykke.Service.Stratis.API.Core.Repositories;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
 using Lykke.Service.Stratis.API.Core.Settings.ServiceSettings;
@@ -19,11 +22,19 @@ namespace Lykke.Service.Stratis.API.Services
         private readonly Network _network;
         private readonly IStratisInsightClient _stratisInsightClient;
         private readonly StratisAPISettings _apiSettings;
-        public StratisService(ILog log, StratisAPISettings apiSettings, IStratisInsightClient stratisInsightClient)
+        private readonly IBroadcastRepository _broadcastRepository;
+        private readonly IBroadcastInProgressRepository _broadcastInProgressRepository;
+
+        public StratisService(ILog log, StratisAPISettings apiSettings,
+            IStratisInsightClient stratisInsightClient,
+            IBroadcastRepository broadcastRepository,
+            IBroadcastInProgressRepository broadcastInProgressRepository)
         {
             _apiSettings = apiSettings;
             _stratisInsightClient = stratisInsightClient;
             _log = log;
+            _broadcastRepository = broadcastRepository;
+            _broadcastInProgressRepository = broadcastInProgressRepository;
             _network = Network.GetNetwork(apiSettings.Network);
         }
 
@@ -93,5 +104,52 @@ namespace Lykke.Service.Stratis.API.Services
             return Serializer.ToString((tx: tx, coins: coins));
         }
 
+        public async Task<IBroadcast> GetBroadcastAsync(Guid operationId)
+        {
+            return await _broadcastRepository.GetAsync(operationId);
+        }
+
+        public Transaction GetTransaction(string transactionHex)
+        {
+            try
+            {
+                return Transaction.Parse(transactionHex);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task BroadcastAsync(Transaction transaction, Guid operationId)
+        {
+            TxBroadcast response;
+
+            try
+            {
+                response = await _stratisInsightClient.BroadcastTxAsync(transaction.ToHex());
+
+                if (response == null)
+                {
+                    throw new ArgumentException($"{nameof(response)} can not be null");
+                }
+                if (string.IsNullOrEmpty(response.Txid))
+                {
+                    throw new ArgumentException($"{nameof(response)}{nameof(response.Txid)} can not be null or empty");
+                }
+            }
+            catch (Exception ex)
+            {
+                await _log.WriteErrorAsync(nameof(StratisService), nameof(BroadcastAsync),
+                    $"transaction={transaction}, operationId={operationId}", ex);
+                await _broadcastRepository.AddFailedAsync(operationId, transaction.GetHash().ToString(),
+                    ex.ToString());
+
+                return;
+            }
+
+            await _broadcastRepository.AddAsync(operationId, response.Txid);
+            await _broadcastInProgressRepository.AddAsync(operationId, response.Txid);
+        }
     }
 }

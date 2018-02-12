@@ -2,16 +2,22 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
 using Lykke.Service.Stratis.API.Core;
+using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
+using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
+using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
 using Lykke.Service.Stratis.API.Models;
+using Lykke.Service.Stratis.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NBitcoin;
 
 namespace Lykke.Service.Stratis.API.Controllers
 {
@@ -19,9 +25,13 @@ namespace Lykke.Service.Stratis.API.Controllers
     public class TransactionsController : Controller
     {
         private readonly IStratisService _stratisService;
+        private readonly ILog _log;
+        private readonly IStratisInsightClient _stratisInsightClient;
 
-        public TransactionsController(ILog log, IStratisService stratisService)
+        public TransactionsController(ILog log, IStratisService stratisService, IStratisInsightClient stratisInsightClient)
         {
+            _log = log;
+            _stratisInsightClient = stratisInsightClient;
             _stratisService = stratisService;
         }
 
@@ -77,12 +87,35 @@ namespace Lykke.Service.Stratis.API.Controllers
             });
         }
 
-       
 
-       
+        [HttpPost("broadcast")]
+        public async Task<IActionResult> Broadcast([Required, FromBody] BroadcastTransactionRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ErrorResponse.Create("ValidationError", ModelState));
+            }
 
-      
-       
+            var broadcast = await _stratisService.GetBroadcastAsync(request.OperationId);
+            if (broadcast != null)
+            {
+                return new StatusCodeResult(StatusCodes.Status409Conflict);
+            }
+
+            var transaction = _stratisService.GetTransaction(request.SignedTransaction);
+            if (transaction == null)
+            {
+                return BadRequest(ErrorResponse.Create($"{nameof(request.SignedTransaction)} is not a valid"));
+            }
+
+            await _stratisService.BroadcastAsync(transaction, request.OperationId);
+
+            return Ok();
+        }
+
+
+    
+
     }
 
 }
