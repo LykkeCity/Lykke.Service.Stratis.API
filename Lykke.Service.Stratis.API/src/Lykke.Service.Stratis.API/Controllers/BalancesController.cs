@@ -56,5 +56,26 @@ namespace Lykke.Service.Stratis.API.Controllers
 
             return Ok();
         }
+
+        [HttpDelete("{address}/observation")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteFromObservations([Required] string address)
+        {
+            if (string.IsNullOrEmpty(address))
+            {
+                return BadRequest(ErrorResponse.Create($"{nameof(address)} is null or empty"));
+            }
+
+            var balance = await _balanceRepository.GetAsync(address);
+            if (balance == null)
+            {
+                return new StatusCodeResult(StatusCodes.Status204NoContent);
+            }
+
+            await _balanceRepository.DeleteAsync(address);
+            await _balancePositiveRepository.DeleteAsync(address);
+
+            return Ok();
+        }
     }
 }

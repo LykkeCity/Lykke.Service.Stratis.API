@@ -1,7 +1,7 @@
 ﻿
 namespace Lykke.Service.Stratis.API.Client
 {
-    public interface IStratisAPIClient
+    public interface IStratisAPIClient2
     {
     }
 }

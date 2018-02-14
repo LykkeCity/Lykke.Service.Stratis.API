@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Common.Log;
+using Lykke.Service.Stratis.API.AzureRepositories.Balance;
 using Lykke.Service.Stratis.API.AzureRepositories.Broadcast;
 using Lykke.Service.Stratis.API.AzureRepositories.BroadcastInprogress;
 using Lykke.Service.Stratis.API.Core.Repositories;
@@ -67,6 +68,15 @@ namespace Lykke.Service.Stratis.API.Modules
                 .WithParameter(TypedParameter.From(connectionStringManager))
                 .SingleInstance();
 
+            builder.RegisterType<BalanceRepository>()
+                .As<IBalanceRepository>()
+                .WithParameter(TypedParameter.From(connectionStringManager))
+                .SingleInstance();
+
+            builder.RegisterType<BalancePositiveRepository>()
+                .As<IBalancePositiveRepository>()
+                .WithParameter(TypedParameter.From(connectionStringManager))
+                .SingleInstance();
 
             builder.Populate(_services);
         }

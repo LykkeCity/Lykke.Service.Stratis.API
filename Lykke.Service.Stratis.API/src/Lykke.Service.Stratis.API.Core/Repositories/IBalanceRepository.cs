@@ -11,5 +11,7 @@ namespace Lykke.Service.Stratis.API.Core.Repositories
         Task AddAsync(string address);
        
         Task<IBalance> GetAsync(string address);
-    }   
+        Task DeleteAsync(string address);
+
+    }
 }

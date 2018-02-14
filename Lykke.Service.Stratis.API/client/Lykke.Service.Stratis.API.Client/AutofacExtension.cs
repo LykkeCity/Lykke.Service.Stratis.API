@@ -14,10 +14,10 @@ namespace Lykke.Service.Stratis.API.Client
             if (string.IsNullOrWhiteSpace(serviceUrl))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(serviceUrl));
 
-            builder.RegisterType<StratisAPIClient>()
-                .WithParameter("serviceUrl", serviceUrl)
-                .As<IStratisAPIClient>()
-                .SingleInstance();
+            //builder.RegisterType<StratisAPIClient>()
+            //    .WithParameter("serviceUrl", serviceUrl)
+            //    .As<IStratisAPIClient>()
+            //    .SingleInstance();
         }
 
         public static void RegisterStratisAPIClient(this ContainerBuilder builder, StratisAPIServiceClientSettings settings, ILog log)

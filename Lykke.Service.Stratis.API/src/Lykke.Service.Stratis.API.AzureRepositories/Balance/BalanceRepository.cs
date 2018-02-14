@@ -37,5 +37,10 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Balance
                 RowKey = GetRowKey(address)
             });
         }
+
+        public async Task DeleteAsync(string address)
+        {
+            await _table.DeleteAsync(GetPartitionKey(), GetRowKey(address));
+        }
     }
 }
