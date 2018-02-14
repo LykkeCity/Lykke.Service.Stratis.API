@@ -143,6 +143,19 @@ namespace Lykke.Service.Stratis.API.Controllers
             });
         }
 
+        [HttpDelete("broadcast/{operationId}")]
+        public async Task<IActionResult> DeleteBroadcast([Required] Guid operationId)
+        {
+            var broadcast = await _stratisService.GetBroadcastAsync(operationId);
+            if (broadcast == null)
+            {
+                return NoContent();
+            }
+
+            await _stratisService.DeleteBroadcastAsync(broadcast);
+
+            return Ok();
+        }
 
     }
 

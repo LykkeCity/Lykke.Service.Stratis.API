@@ -11,5 +11,6 @@ namespace Lykke.Service.Stratis.API.Core.Repositories
         Task<IBroadcast> GetAsync(Guid operationId);
         Task AddAsync(Guid operationId, string hash);
         Task AddFailedAsync(Guid operationId, string hash, string error);
+        Task DeleteAsync(Guid operationId);
     }
 }

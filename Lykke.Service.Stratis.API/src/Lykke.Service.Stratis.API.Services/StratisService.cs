@@ -151,5 +151,16 @@ namespace Lykke.Service.Stratis.API.Services
             await _broadcastRepository.AddAsync(operationId, response.Txid);
             await _broadcastInProgressRepository.AddAsync(operationId, response.Txid);
         }
+
+        public async Task DeleteBroadcastAsync(IBroadcast broadcast)
+        {
+            await _broadcastRepository.DeleteAsync(broadcast.OperationId);
+
+            if (broadcast.State == BroadcastState.Broadcasted)
+            {
+                await _broadcastInProgressRepository.DeleteAsync(broadcast.OperationId);
+            }
+        }
+
     }
 }

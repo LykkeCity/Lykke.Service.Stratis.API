@@ -16,5 +16,7 @@ namespace Lykke.Service.Stratis.API.Core.Settings
         Task<IBroadcast> GetBroadcastAsync(Guid operationId);
         Transaction GetTransaction(string signedTransaction);
         Task BroadcastAsync(Transaction transaction, Guid operationId);
+        Task DeleteBroadcastAsync(IBroadcast broadcast);
+
     }
 }

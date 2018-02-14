@@ -53,5 +53,9 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Broadcast
             });
         }
 
+        public async Task DeleteAsync(Guid operationId)
+        {
+            await _table.DeleteAsync(GetPartitionKey(), GetRowKey(operationId));
+        }
     }
 }
