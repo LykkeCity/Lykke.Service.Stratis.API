@@ -144,6 +144,10 @@ namespace Lykke.Service.Stratis.API.Controllers
         }
 
         [HttpDelete("broadcast/{operationId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> DeleteBroadcast([Required] Guid operationId)
         {
             var broadcast = await _stratisService.GetBroadcastAsync(operationId);

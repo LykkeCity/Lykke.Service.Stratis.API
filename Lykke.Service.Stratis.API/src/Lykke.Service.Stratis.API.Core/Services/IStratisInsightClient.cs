@@ -11,5 +11,6 @@ namespace Lykke.Service.Stratis.API.Core.Services
         Task<ulong> GetBalanceSatoshis(string address);
         Task<TxUnspent[]> GetTxsUnspentAsync(string address);
         Task<TxBroadcast> BroadcastTxAsync(string v);
+        Task<long?> GetLatestBlockHeight();
     }
 }

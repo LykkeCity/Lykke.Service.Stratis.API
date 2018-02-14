@@ -24,11 +24,13 @@ namespace Lykke.Service.Stratis.API.Services
         private readonly StratisAPISettings _apiSettings;
         private readonly IBroadcastRepository _broadcastRepository;
         private readonly IBroadcastInProgressRepository _broadcastInProgressRepository;
+        private readonly IBalancePositiveRepository _balancePositiveRepository;
 
         public StratisService(ILog log, StratisAPISettings apiSettings,
             IStratisInsightClient stratisInsightClient,
             IBroadcastRepository broadcastRepository,
-            IBroadcastInProgressRepository broadcastInProgressRepository)
+            IBroadcastInProgressRepository broadcastInProgressRepository,
+            IBalancePositiveRepository balancePositiveRepository)
         {
             _apiSettings = apiSettings;
             _stratisInsightClient = stratisInsightClient;
@@ -160,6 +162,33 @@ namespace Lykke.Service.Stratis.API.Services
             {
                 await _broadcastInProgressRepository.DeleteAsync(broadcast.OperationId);
             }
+        }
+
+        public async Task<decimal> RefreshAddressBalance(string address, long? block = null)
+        {
+            var balance = await GetAddressBalance(address);
+
+            if (balance > 0)
+            {
+                var balancePositive = await _balancePositiveRepository.GetAsync(address);
+                if (balancePositive != null && balancePositive.Amount == balance)
+                {
+                    return balance;
+                }
+
+                if (!block.HasValue)
+                {
+                    block = await _stratisInsightClient.GetLatestBlockHeight();
+                }
+
+                await _balancePositiveRepository.SaveAsync(address, balance, block.Value);
+            }
+            else
+            {
+                await _balancePositiveRepository.DeleteAsync(address);
+            }
+
+            return balance;
         }
 
     }

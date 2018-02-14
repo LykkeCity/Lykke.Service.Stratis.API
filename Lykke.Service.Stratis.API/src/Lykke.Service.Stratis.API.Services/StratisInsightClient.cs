@@ -85,6 +85,11 @@ namespace Lykke.Service.Stratis.API.Services
                 throw;
             }
         }
+
+       
+
+       
+
         private async Task<T> GetJson<T>(string url, int tryCount = 3)
         {
             bool NeedToRetryException(Exception ex)
@@ -110,6 +115,16 @@ namespace Lykke.Service.Stratis.API.Services
             }
 
             return await Retry.Try(() => url.GetJsonAsync<T>(), NeedToRetryException, tryCount, _log);
+        }
+
+        Task<long?> IStratisInsightClient.GetLatestBlockHeight()
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<TxUnspent[]> IStratisInsightClient.GetTxsUnspentAsync(string address)
+        {
+            throw new NotImplementedException();
         }
     }
 }

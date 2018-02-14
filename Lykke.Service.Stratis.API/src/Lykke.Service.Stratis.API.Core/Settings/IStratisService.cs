@@ -18,5 +18,6 @@ namespace Lykke.Service.Stratis.API.Core.Settings
         Task BroadcastAsync(Transaction transaction, Guid operationId);
         Task DeleteBroadcastAsync(IBroadcast broadcast);
 
+        Task<decimal> RefreshAddressBalance(string address, long? block = null);
     }
 }
