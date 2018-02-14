@@ -28,6 +28,8 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Broadcast
         public DateTime? CompletedUtc { get; set; }
 
         public DateTime? FailedUtc { get; set; }
+
+        public long Block { get; set; }
     }
 
 }

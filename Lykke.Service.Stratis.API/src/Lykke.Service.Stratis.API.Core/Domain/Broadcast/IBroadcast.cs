@@ -12,6 +12,7 @@ namespace Lykke.Service.Stratis.API.Core.Domain.Broadcast
         string Hash { get; }
         decimal? Amount { get; }
         decimal? Fee { get; }
+        long Block { get; }
         string Error { get; }
         DateTime? BroadcastedUtc { get; }
         DateTime? CompletedUtc { get; }

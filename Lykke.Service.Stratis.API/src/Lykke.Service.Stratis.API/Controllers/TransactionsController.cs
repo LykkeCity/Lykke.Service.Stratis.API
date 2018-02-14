@@ -13,6 +13,7 @@ using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
 using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
+using Lykke.Service.Stratis.API.Helper;
 using Lykke.Service.Stratis.API.Models;
 using Lykke.Service.Stratis.API.Services;
 using Microsoft.AspNetCore.Http;
@@ -113,8 +114,35 @@ namespace Lykke.Service.Stratis.API.Controllers
             return Ok();
         }
 
+        [HttpGet("broadcast/single/{operationId}")]
+        [ProducesResponseType(typeof(BroadcastedSingleTransactionResponse), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetBroadcast([Required] Guid operationId)
+        {
+            var broadcast = await _stratisService.GetBroadcastAsync(operationId);
+            if (broadcast == null)
+            {
+                return NoContent();
+            }
 
-    
+            var amount = broadcast.Amount.HasValue ?
+                Conversions.CoinsToContract(broadcast.Amount.Value, Asset.Stratis.Accuracy) : "";
+
+            var fee = broadcast.Fee.HasValue ?
+                Conversions.CoinsToContract(broadcast.Fee.Value, Asset.Stratis.Accuracy) : "";
+
+            return Ok(new BroadcastedSingleTransactionResponse
+            {
+                OperationId = broadcast.OperationId,
+                Hash = broadcast.Hash,
+                State = broadcast.State.ToBroadcastedTransactionState(),
+                Amount = amount,
+                Fee = fee,
+                Error = broadcast.Error,
+                Timestamp = broadcast.GetTimestamp(),
+                Block = broadcast.Block
+            });
+        }
+
 
     }
 
