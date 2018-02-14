@@ -42,5 +42,12 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Balance
         {
             return await _table.GetDataAsync(GetPartitionKey(), GetRowKey(address));
         }
+
+        public async Task<(IEnumerable<IBalancePositive> Items, string Continuation)> GetAsync(int take, string continuation)
+        {
+            var result = await _table.GetDataWithContinuationTokenAsync(GetPartitionKey(), take, continuation);
+
+            return (result.Entities, result.ContinuationToken);
+        }
     }
 }

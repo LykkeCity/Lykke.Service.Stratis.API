@@ -4,12 +4,16 @@ using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Lykke.Service.BlockchainApi.Contract;
+using Lykke.Service.BlockchainApi.Contract.Balances;
 using Lykke.Service.Stratis.API.AzureRepositories.Balance;
 using Lykke.Service.Stratis.API.Core.Settings;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Lykke.Service.Stratis.API.Models;
 using Lykke.Service.Stratis.API.Core.Repositories;
+using System.Linq;
+using Lykke.Service.Stratis.API.Helper;
 
 namespace Lykke.Service.Stratis.API.Controllers
 {
@@ -76,6 +80,17 @@ namespace Lykke.Service.Stratis.API.Controllers
             await _balancePositiveRepository.DeleteAsync(address);
 
             return Ok();
+        }
+
+        [HttpGet]
+        public async Task<PaginationResponse<WalletBalanceContract>> Get([Required, FromQuery] int take, [FromQuery] string continuation)
+        {
+            var result = await _balancePositiveRepository.GetAsync(take, continuation);
+
+            return PaginationResponse.From(
+                result.Continuation,
+                result.Items.Select(f => f.ToWalletBalanceContract()).ToArray()
+            );
         }
     }
 }

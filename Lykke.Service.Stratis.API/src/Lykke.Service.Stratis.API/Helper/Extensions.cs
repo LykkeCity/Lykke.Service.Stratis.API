@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Assets;
+using Lykke.Service.BlockchainApi.Contract.Balances;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
 using Lykke.Service.Stratis.API.Core;
+using Lykke.Service.Stratis.API.Core.Domain.Balance;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
 
 namespace Lykke.Service.Stratis.API.Helper
@@ -55,6 +58,17 @@ namespace Lykke.Service.Stratis.API.Helper
                 default:
                     throw new ArgumentException($"Unsupported IBroadcast.State={Enum.GetName(typeof(BroadcastState), self.State)}");
             }
+        }
+
+        public static WalletBalanceContract ToWalletBalanceContract(this IBalancePositive self)
+        {
+            return new WalletBalanceContract
+            {
+                Address = self.Address,
+                AssetId = Asset.Stratis.Id,
+                Balance = Conversions.CoinsToContract(self.Amount, Asset.Stratis.Accuracy),
+                Block = self.Block
+            };
         }
     }
 }
