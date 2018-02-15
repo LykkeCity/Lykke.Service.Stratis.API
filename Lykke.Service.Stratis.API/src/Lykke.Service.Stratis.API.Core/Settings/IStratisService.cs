@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
+using Lykke.Service.Stratis.API.Core.Domain.Operations;
 using NBitcoin;
 
 namespace Lykke.Service.Stratis.API.Core.Settings
@@ -19,5 +20,9 @@ namespace Lykke.Service.Stratis.API.Core.Settings
         Task DeleteBroadcastAsync(IBroadcast broadcast);
 
         Task<decimal> RefreshAddressBalance(string address, long? block = null);
+        Task<IOperation> GetOperationAsync(Guid operationId, bool loadItems = true);
+
+        Task<string> BuildAsync(Guid operationId, OperationType type, Asset asset, bool subtractFee,
+            (BitcoinAddress from, BitcoinAddress to, Money amount)[] items);
     }
 }

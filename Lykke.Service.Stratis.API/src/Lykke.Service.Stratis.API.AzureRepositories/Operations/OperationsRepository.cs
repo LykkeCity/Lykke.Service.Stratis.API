@@ -1,0 +1,88 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using AzureStorage;
+using AzureStorage.Tables;
+using Common.Log;
+using Lykke.Service.Stratis.API.Core.Domain.Operations;
+using Lykke.Service.Stratis.API.Core.Repositories;
+using Lykke.SettingsReader;
+using Microsoft.WindowsAzure.Storage.Table;
+
+namespace Lykke.Service.Stratis.API.AzureRepositories.Operations
+{
+    public class OperationRepository : IOperationRepository
+    {
+        private INoSQLTableStorage<OperationEntity> _operationStorage;
+        private INoSQLTableStorage<OperationItemEntity> _operationItemStorage;
+        private INoSQLTableStorage<IndexEntity> _indexStorage;
+        private static string GetOperationPartitionKey(Guid operationId) => operationId.ToString();
+        private static string GetOperationRowKey() => string.Empty;
+        private static string GetOperationItemPartitionKey(Guid operationId) => operationId.ToString();
+        private static string GetOperationItemRowKey() => string.Empty;
+        private static string GetIndexPartitionKey(string hash) => hash;
+        private static string GetIndexRowKey() => string.Empty;
+
+        public OperationRepository(IReloadingManager<string> connectionStringManager, ILog log)
+        {
+            _operationStorage = AzureTableStorage<OperationEntity>.Create(connectionStringManager, "StratisOperations", log);
+            _operationItemStorage = AzureTableStorage<OperationItemEntity>.Create(connectionStringManager, "StratisOperationItems", log);
+            _indexStorage = AzureTableStorage<IndexEntity>.Create(connectionStringManager, "StratisOperationIndex", log);
+        }
+
+        public async Task<IOperation> UpsertAsync(Guid operationId, OperationType type, (string fromAddress, string toAddress, decimal amount)[] items,
+            decimal fee, bool subtractFee, string assetId)
+        {
+            var operationItemEntities = items.Select(item => new OperationItemEntity()
+            {
+                PartitionKey = GetOperationItemPartitionKey(operationId),
+                RowKey = GetOperationItemRowKey(),
+                Amount = item.amount,
+                FromAddress = item.fromAddress,
+                ToAddress = item.toAddress
+            });
+
+            var operationEntity = new OperationEntity()
+            {
+                PartitionKey = GetOperationPartitionKey(operationId),
+                RowKey = GetOperationRowKey(),
+                Amount = items.Sum(item => item.amount),
+                Fee = fee,
+                SubtractFee = subtractFee,
+                AssetId = assetId,
+                State = OperationState.Built,
+                BuiltUtc = DateTime.UtcNow,
+                Items = operationItemEntities.ToArray()
+            };
+
+            await _operationStorage.InsertOrReplaceAsync(operationEntity);
+
+            await _operationItemStorage.InsertOrReplaceAsync(operationItemEntities);
+
+            return operationEntity;
+        }
+        
+
+        public async Task<IOperation> GetAsync(Guid operationId, bool loadItems = true)
+        {
+            var partitionKKey = GetOperationPartitionKey(operationId);
+            var rowKey = GetOperationRowKey();
+            var operation = await _operationStorage.GetDataAsync(partitionKKey, rowKey);
+
+            if (loadItems && operation != null)
+            {
+                operation.Items = (await _operationItemStorage.GetDataAsync(GetOperationItemPartitionKey(operationId))).ToArray();
+            }
+
+            return operation;
+        }
+      
+
+        public class IndexEntity : TableEntity
+        {
+            public Guid OperationId { get; set; }
+        }
+    }
+}

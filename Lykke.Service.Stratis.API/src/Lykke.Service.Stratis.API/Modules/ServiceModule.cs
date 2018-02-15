@@ -4,6 +4,8 @@ using Common.Log;
 using Lykke.Service.Stratis.API.AzureRepositories.Balance;
 using Lykke.Service.Stratis.API.AzureRepositories.Broadcast;
 using Lykke.Service.Stratis.API.AzureRepositories.BroadcastInprogress;
+using Lykke.Service.Stratis.API.AzureRepositories.Operations;
+using Lykke.Service.Stratis.API.AzureRepositories.Settings;
 using Lykke.Service.Stratis.API.Core.Repositories;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
@@ -11,6 +13,8 @@ using Lykke.Service.Stratis.API.Core.Settings.ServiceSettings;
 using Lykke.Service.Stratis.API.Services;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
+using NBitcoin;
+using NBitcoin.RPC;
 
 namespace Lykke.Service.Stratis.API.Modules
 {
@@ -77,6 +81,30 @@ namespace Lykke.Service.Stratis.API.Modules
                 .As<IBalancePositiveRepository>()
                 .WithParameter(TypedParameter.From(connectionStringManager))
                 .SingleInstance();
+
+
+            builder.RegisterType<OperationRepository>()
+                .As<IOperationRepository>()
+                .WithParameter(TypedParameter.From(connectionStringManager))
+                .SingleInstance();
+
+            builder.RegisterType<SettingsRepository>()
+                           .As<ISettingsRepository>()
+                           .WithParameter(TypedParameter.From(connectionStringManager))
+                           .SingleInstance();
+
+            builder.RegisterInstance(Network.GetNetwork(_settings.CurrentValue.NetworkType))
+                .As<Network>();
+
+            builder.RegisterType<RPCClient>()
+                .AsSelf()
+                .WithParameter("authenticationString", _settings.CurrentValue.RpcAuthenticationString)
+                .WithParameter("hostOrUri", _settings.CurrentValue.RpcUrl);
+
+            builder.RegisterType<BlockchainReader>()
+                .As<IBlockchainReader>();
+
+
 
             builder.Populate(_services);
         }

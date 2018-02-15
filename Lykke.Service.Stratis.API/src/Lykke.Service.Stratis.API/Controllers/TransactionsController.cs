@@ -5,12 +5,16 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
+using Lykke.Common.ApiLibrary.Contract;
 using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
 using Lykke.Service.Stratis.API.Core;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
 using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
+using Lykke.Service.Stratis.API.Core.Domain.Operations;
+using Lykke.Service.Stratis.API.Core.Exceptions;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
 using Lykke.Service.Stratis.API.Helper;
@@ -19,6 +23,7 @@ using Lykke.Service.Stratis.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NBitcoin;
+using Lykke.Service.Stratis.API.Helper;
 
 namespace Lykke.Service.Stratis.API.Controllers
 {
@@ -116,6 +121,7 @@ namespace Lykke.Service.Stratis.API.Controllers
 
         [HttpGet("broadcast/single/{operationId}")]
         [ProducesResponseType(typeof(BroadcastedSingleTransactionResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
         public async Task<IActionResult> GetBroadcast([Required] Guid operationId)
         {
             var broadcast = await _stratisService.GetBroadcastAsync(operationId);
@@ -124,23 +130,8 @@ namespace Lykke.Service.Stratis.API.Controllers
                 return NoContent();
             }
 
-            var amount = broadcast.Amount.HasValue ?
-                Conversions.CoinsToContract(broadcast.Amount.Value, Asset.Stratis.Accuracy) : "";
-
-            var fee = broadcast.Fee.HasValue ?
-                Conversions.CoinsToContract(broadcast.Fee.Value, Asset.Stratis.Accuracy) : "";
-
-            return Ok(new BroadcastedSingleTransactionResponse
-            {
-                OperationId = broadcast.OperationId,
-                Hash = broadcast.Hash,
-                State = broadcast.State.ToBroadcastedTransactionState(),
-                Amount = amount,
-                Fee = fee,
-                Error = broadcast.Error,
-                Timestamp = broadcast.GetTimestamp(),
-                Block = broadcast.Block
-            });
+            return await Get(operationId, op => op.ToSingleResponse());
+        
         }
 
         [HttpDelete("broadcast/{operationId}")]
@@ -159,6 +150,69 @@ namespace Lykke.Service.Stratis.API.Controllers
             await _stratisService.DeleteBroadcastAsync(broadcast);
 
             return Ok();
+        }
+
+        [NonAction]
+        public async Task<IActionResult> Get<TResponse>(Guid operationId, Func<IOperation, TResponse> toResponse)
+        {
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidOperationId(operationId))
+            {
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
+            }
+
+            var operation = await _stratisService.GetOperationAsync(operationId);
+            if (operation != null)
+                return Ok(toResponse(operation));
+            else
+                return NoContent();
+        }
+
+        [HttpPost("many-inputs")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BuildTransactionResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(BlockchainErrorResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> Build([FromBody]BuildTransactionWithManyInputsRequest request)
+        {
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidRequest(request, out var items, out var asset))
+            {
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
+            }
+
+            return await Build(request.OperationId, OperationType.MultiFromSingleTo, asset, true, items);
+        }
+
+        [NonAction]
+        public async Task<IActionResult> Build(Guid operationId, OperationType type, Asset asset, bool subtractFees, params (BitcoinAddress from, BitcoinAddress to, Money amount)[] items)
+        {
+            var operation = await _stratisService.GetOperationAsync(operationId,  false);
+
+            if (operation != null && operation.State != OperationState.Built)
+            {
+                return StatusCode(StatusCodes.Status409Conflict,
+                    ErrorResponse.Create($"Operation is already {Enum.GetName(typeof(OperationState), operation.State).ToLower()}"));
+            }
+
+            var signContext = string.Empty;
+
+            try
+            {
+                signContext = await _stratisService.BuildAsync(operationId, OperationType.SingleFromSingleTo, asset, subtractFees, items);
+            }
+            catch (DustException)
+            {
+                return BadRequest(BlockchainErrorResponse.FromKnownError(BlockchainErrorCode.AmountIsTooSmall));
+            }
+            catch (NotEnoughFundsException)
+            {
+                return BadRequest(BlockchainErrorResponse.FromKnownError(BlockchainErrorCode.NotEnoughtBalance));
+            }
+
+            return Ok(new BuildTransactionResponse
+            {
+                TransactionContext = signContext.ToBase64()
+            });
         }
 
     }

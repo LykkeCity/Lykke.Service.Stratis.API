@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Service.Stratis.API.Core;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
 using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
+using Lykke.Service.Stratis.API.Core.Domain.Operations;
+using Lykke.Service.Stratis.API.Core.Exceptions;
 using Lykke.Service.Stratis.API.Core.Repositories;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
 using Lykke.Service.Stratis.API.Core.Settings.ServiceSettings;
+using Lykke.Service.Stratis.API.Services.Models;
 using NBitcoin;
 using NBitcoin.JsonConverters;
 using NBitcoin.Policy;
@@ -18,6 +22,8 @@ namespace Lykke.Service.Stratis.API.Services
 {
     public class StratisService : IStratisService
     {
+        private readonly IBlockchainReader _blockchainReader;
+
         private readonly ILog _log;
         private readonly Network _network;
         private readonly IStratisInsightClient _stratisInsightClient;
@@ -25,18 +31,30 @@ namespace Lykke.Service.Stratis.API.Services
         private readonly IBroadcastRepository _broadcastRepository;
         private readonly IBroadcastInProgressRepository _broadcastInProgressRepository;
         private readonly IBalancePositiveRepository _balancePositiveRepository;
+        private readonly IOperationRepository _operationRepository;
+        private readonly ISettingsRepository _settingsRepository;
+        private readonly ISettings _settings;
 
         public StratisService(ILog log, StratisAPISettings apiSettings,
             IStratisInsightClient stratisInsightClient,
             IBroadcastRepository broadcastRepository,
             IBroadcastInProgressRepository broadcastInProgressRepository,
-            IBalancePositiveRepository balancePositiveRepository)
+            IBalancePositiveRepository balancePositiveRepository,
+            IOperationRepository operationRepository,
+           ISettings settings,
+            ISettingsRepository settingsRepository,
+            IBlockchainReader blockchainReader)
         {
             _apiSettings = apiSettings;
             _stratisInsightClient = stratisInsightClient;
             _log = log;
             _broadcastRepository = broadcastRepository;
             _broadcastInProgressRepository = broadcastInProgressRepository;
+            _balancePositiveRepository = balancePositiveRepository;
+            _operationRepository = operationRepository;
+            _settings = settings;
+            _settingsRepository = settingsRepository;
+            _blockchainReader = blockchainReader;
             _network = Network.GetNetwork(apiSettings.Network);
         }
 
@@ -44,7 +62,6 @@ namespace Lykke.Service.Stratis.API.Services
         {
             var balanceSatoshis = await _stratisInsightClient.GetBalanceSatoshis(address);
             var balance = Money.Satoshis(balanceSatoshis).ToDecimal(Asset.Stratis.Unit);
-
             return balance;
         }
 
@@ -189,6 +206,165 @@ namespace Lykke.Service.Stratis.API.Services
             }
 
             return balance;
+        }
+
+        public async Task<IOperation> GetOperationAsync(Guid operationId, bool loadItems = true)
+        {
+            return await _operationRepository.GetAsync(operationId, loadItems);
+        }
+
+        public async Task<string> BuildAsync(Guid operationId, OperationType type, Asset asset, bool subtractFee, (BitcoinAddress from, BitcoinAddress to, Money amount)[] items)
+        {
+            var settings = await LoadStoredSettingsAsync();
+
+            var relayFee = new FeeRate(Money.Coins(settings.FeePerKb));
+
+            var inputs =
+                items.GroupBy(x => x.from)
+                     .Select(g => new { Address = g.Key, Amount = g.Select(x => x.amount).Sum() })
+                     .ToList();
+
+            var outputs =
+                items.GroupBy(x => x.to)
+                     .Select(g => new { Address = g.Key, Amount = g.Select(x => x.amount).Sum() })
+                     .ToList();
+
+            var utxo = await _blockchainReader.ListUnspentAsync(
+                settings.ConfirmationLevel,
+                inputs.Select(from => from.Address.ToString()).ToArray());
+
+            var unspentOutputs =
+                inputs.ToDictionary(from => from.Address, from => new Stack<Utxo>(utxo.Where(x => x.Address == from.Address.ToString()).OrderBy(x => x.Confirmations)));
+
+            var spentOutputs =
+                inputs.ToDictionary(from => from.Address, from => new Stack<Utxo>());
+
+            var oddOutputs =
+                inputs.ToDictionary(from => from.Address, from => (TxOut)null);
+
+            var tx = new Transaction();
+
+            foreach (var from in inputs)
+            {
+                var amount = from.Amount;
+
+                if (amount > Money.Zero)
+                {
+                    while (amount > Money.Zero && unspentOutputs[from.Address].TryPop(out var vout))
+                    {
+                        tx.AddInput(vout.AsTxIn());
+                        spentOutputs[from.Address].Push(vout);
+                        amount -= vout.Money;
+                    }
+                }
+
+                if (amount > Money.Zero)
+                {
+                    throw new NotEnoughFundsException("Not enough funds", from.Address.ToString(), amount);
+                }
+
+                if (amount < Money.Zero)
+                {
+                    oddOutputs[from.Address] = tx.AddOutput(amount.Abs(), from.Address);
+                }
+            }
+
+            foreach (var to in outputs)
+            {
+                var txout = tx.AddOutput(to.Amount, to.Address);
+                if (txout.IsDust(relayFee))
+                {
+                    throw new DustException("Output amount is too small", to.Amount, to.Address);
+                }
+            }
+
+            var fee = CalcFee(tx, settings);
+            var totalAmount = items.Select(x => x.amount).Sum();
+
+            if (subtractFee)
+            {
+                foreach (var vout in tx.Outputs.Except(oddOutputs.Where(x => x.Value != null).Select(x => x.Value)))
+                {
+                    vout.Value -= CalcFeeSplit(fee, totalAmount, vout.Value);
+                }
+            }
+            else
+            {
+                foreach (var from in inputs)
+                {
+                    var inputAmount = spentOutputs[from.Address].Select(x => x.Money).Sum();
+                    var operationAndFeeAmount = from.Amount + CalcFeeSplit(fee, totalAmount, from.Amount);
+
+                    if (inputAmount < operationAndFeeAmount)
+                    {
+                        while (inputAmount < operationAndFeeAmount && unspentOutputs[from.Address].TryPop(out var vout))
+                        {
+                            tx.AddInput(vout.AsTxIn());
+                            spentOutputs[from.Address].Push(vout);
+                            inputAmount += vout.Money;
+                        }
+                    }
+
+                    if (inputAmount < operationAndFeeAmount)
+                    {
+                        throw new NotEnoughFundsException("Not enough funds", from.ToString(), operationAndFeeAmount - inputAmount);
+                    }
+
+                    if (inputAmount > operationAndFeeAmount)
+                    {
+                        oddOutputs[from.Address] = oddOutputs[from.Address] ?? tx.AddOutput(0, from.Address);
+                        oddOutputs[from.Address].Value = inputAmount - operationAndFeeAmount;
+                    }
+                    else if (oddOutputs.TryGetValue(from.Address, out var vout)) // must always be true here
+                    {
+                        tx.Outputs.Remove(vout);
+                        oddOutputs[from.Address] = null;
+                    }
+                }
+            }
+
+            await _operationRepository.UpsertAsync(operationId, type,
+                items.Select(x => (x.from.ToString(), x.to.ToString(), x.amount.ToUnit(asset.Unit))).ToArray(),
+                fee.ToUnit(asset.Unit), subtractFee, asset.Id);
+
+            var coins = spentOutputs.Values
+                .SelectMany(v => v)
+                .Select(x => x.AsCoin())
+                .ToList();
+
+            return Serializer.ToString((tx, coins));
+        }
+
+        public async Task<ISettings> LoadStoredSettingsAsync()
+        {
+            return (await _settingsRepository.GetAsync()) ?? _settings;
+        }
+
+        public Money CalcFee(Transaction tx, ISettings settings)
+        {
+            if (settings.UseDefaultFee)
+            {
+                return Constants.DefaultFee;
+            }
+            else
+            {
+                var fee = new FeeRate(Money.Coins(settings.FeePerKb)).GetFee(tx);
+                var min = Money.Coins(settings.MinFee);
+                var max = Money.Coins(settings.MaxFee);
+
+                return Money.Max(Money.Min(fee, max), min);
+            }
+        }
+
+        public Money CalcFeeSplit(Money fee, Money totalOutput, Money output)
+        {
+            var unit = Asset.Stratis.Unit;
+            var decimalFee = fee.ToUnit(unit);
+            var decimalTotalOutput = totalOutput.ToUnit(unit);
+            var decimalOutput = output.ToUnit(unit);
+            var decimalResult = decimalFee * (decimalOutput / decimalTotalOutput);
+
+            return Money.FromUnit(decimalResult, unit);
         }
 
     }

@@ -7,6 +7,8 @@
 
         public string InsightApiUrl { get; set; }
         public decimal Fee { get; set; }
-
+        public string RpcAuthenticationString { get; set; }
+        public string NetworkType { get; set; }
+        public string RpcUrl { get; set; }
     }
 }
