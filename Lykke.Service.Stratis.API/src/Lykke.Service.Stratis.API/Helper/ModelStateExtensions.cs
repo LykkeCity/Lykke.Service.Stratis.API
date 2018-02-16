@@ -86,5 +86,66 @@ namespace Lykke.Service.Stratis.API.Helper
             return self.IsValid;
         }
 
+
+
+        public static bool IsValidRequest(this ModelStateDictionary self,
+    BuildTransactionWithManyOutputsRequest request,
+    out (BitcoinAddress from, BitcoinAddress to, Money amount)[] items,
+    out Asset asset)
+        {
+            items = new(BitcoinAddress from, BitcoinAddress to, Money amount)[request.Outputs.Count];
+            asset = null;
+
+            if (!self.IsValid)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.AssetId) || !Constants.Assets.TryGetValue(request.AssetId, out asset))
+            {
+                self.AddModelError(nameof(BuildTransactionWithManyOutputsRequest.AssetId), "Invalid asset");
+            }
+
+            if (!Core.Utils.ValidateAddress(request.FromAddress, out var fromAddress))
+            {
+                self.AddModelError(
+                    nameof(BuildTransactionWithManyOutputsRequest.FromAddress),
+                    "Invalid sender adddress");
+            }
+
+            for (int i = 0; i < request.Outputs.Count; i++)
+            {
+                items[i].from = fromAddress;
+
+                if (Core.Utils.ValidateAddress(request.Outputs[i].ToAddress, out var toAddress))
+                {
+                    items[i].to = toAddress;
+                }
+                else
+                {
+                    self.AddModelError(
+                        $"{nameof(BuildTransactionWithManyOutputsRequest.Outputs)}[{i}].ToAddress",
+                        "Invalid sender adddress");
+                }
+
+                if (asset != null)
+                {
+                    try
+                    {
+                        var coins = Conversions.CoinsFromContract(request.Outputs[i].Amount, asset.Accuracy);
+                        items[0].amount = Money.FromUnit(coins, asset.Unit);
+                    }
+                    catch (ConversionException ex)
+                    {
+                        self.AddModelError(
+                            $"{nameof(BuildTransactionWithManyOutputsRequest.Outputs)}[{i}].Amount",
+                            ex.Message);
+                    }
+                }
+            }
+
+            return self.IsValid;
+        }
+
     }
 }

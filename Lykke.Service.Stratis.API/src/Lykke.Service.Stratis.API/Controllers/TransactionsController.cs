@@ -215,6 +215,22 @@ namespace Lykke.Service.Stratis.API.Controllers
             });
         }
 
+
+
+        [HttpPost("many-outputs")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BuildTransactionResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(BlockchainErrorResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> Build([FromBody]BuildTransactionWithManyOutputsRequest request)
+        {
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidRequest(request, out var items, out var asset))
+            {
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
+            }
+
+            return await Build(request.OperationId, OperationType.SingleFromMultiTo, asset, false, items);
+        }
     }
 
 }
