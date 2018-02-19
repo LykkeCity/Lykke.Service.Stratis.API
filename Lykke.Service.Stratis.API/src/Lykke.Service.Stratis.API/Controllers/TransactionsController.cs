@@ -180,7 +180,7 @@ namespace Lykke.Service.Stratis.API.Controllers
                 return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
 
-            return await Build(request.OperationId, OperationType.MultiFromSingleTo, asset, true, items);
+            return await Get(request.OperationId, op => op.ToManyInputsResponse());
         }
 
         [NonAction]
@@ -229,7 +229,17 @@ namespace Lykke.Service.Stratis.API.Controllers
                 return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
 
-            return await Build(request.OperationId, OperationType.SingleFromMultiTo, asset, false, items);
+            // return await Build(request.OperationId, OperationType.SingleFromMultiTo, asset, false, items);
+            return await Get( request.OperationId, op => op.ToManyOutputsResponse());
+        }
+
+
+        [HttpGet("broadcast/many-inputs/{operationId:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BroadcastedTransactionWithManyInputsResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> GetManyInputs([FromRoute]Guid operationId)
+        {
+            return await Get(operationId, op => op.ToManyInputsResponse());
         }
     }
 

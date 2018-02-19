@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Lykke.Service.BlockchainApi.Contract;
+﻿using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
 using Lykke.Service.Stratis.API.Core;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NBitcoin;
-using Lykke.Service.BlockchainApi.Contract.Transactions;
+using System;
 namespace Lykke.Service.Stratis.API.Helper
 {
     public static class ModelStateExtensions
