@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Common.Log;
+using Lykke.Service.Stratis.API.AzureRepositories.Addresses;
 using Lykke.Service.Stratis.API.AzureRepositories.Balance;
 using Lykke.Service.Stratis.API.AzureRepositories.Broadcast;
 using Lykke.Service.Stratis.API.AzureRepositories.BroadcastInprogress;
@@ -92,6 +93,12 @@ namespace Lykke.Service.Stratis.API.Modules
                            .As<ISettingsRepository>()
                            .WithParameter(TypedParameter.From(connectionStringManager))
                            .SingleInstance();
+
+            builder.RegisterType<AddressRepository>()
+                .As<IAddressRepository>()
+                .WithParameter(TypedParameter.From(connectionStringManager));
+
+
 
             builder.RegisterInstance(Network.GetNetwork(_settings.CurrentValue.NetworkType))
                 .As<Network>();

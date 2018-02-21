@@ -24,5 +24,7 @@ namespace Lykke.Service.Stratis.API.Core.Settings
 
         Task<string> BuildAsync(Guid operationId, OperationType type, Asset asset, bool subtractFee,
             (BitcoinAddress from, BitcoinAddress to, Money amount)[] items);
+
+        Task<bool> TryDeleteObservableAddressAsync(ObservationCategory category, string address);
     }
 }

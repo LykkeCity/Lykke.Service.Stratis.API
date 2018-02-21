@@ -144,5 +144,18 @@ namespace Lykke.Service.Stratis.API.Helper
             return self.IsValid;
         }
 
+
+        public static bool IsValidAddress(this ModelStateDictionary self, string address)
+        {
+            if (Core.Utils.ValidateAddress(address, out var _))
+            {
+                return true;
+            }
+            else
+            {
+                self.AddModelError(nameof(address), "Address must be a valid Stratis transparent (t-) address");
+                return false;
+            }
+        }
     }
 }

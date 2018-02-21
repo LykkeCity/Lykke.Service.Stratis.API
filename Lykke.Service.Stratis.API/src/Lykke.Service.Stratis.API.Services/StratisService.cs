@@ -23,6 +23,7 @@ namespace Lykke.Service.Stratis.API.Services
     public class StratisService : IStratisService
     {
         private readonly IBlockchainReader _blockchainReader;
+        private readonly IAddressRepository _addressRepository;
 
         private readonly ILog _log;
         private readonly Network _network;
@@ -43,7 +44,8 @@ namespace Lykke.Service.Stratis.API.Services
             IOperationRepository operationRepository,
            ISettings settings,
             ISettingsRepository settingsRepository,
-            IBlockchainReader blockchainReader)
+            IBlockchainReader blockchainReader,
+            IAddressRepository addressRepository)
         {
             _apiSettings = apiSettings;
             _stratisInsightClient = stratisInsightClient;
@@ -55,6 +57,7 @@ namespace Lykke.Service.Stratis.API.Services
             _settings = settings;
             _settingsRepository = settingsRepository;
             _blockchainReader = blockchainReader;
+            _addressRepository = addressRepository;
             _network = Network.GetNetwork(apiSettings.Network);
         }
 
@@ -367,5 +370,17 @@ namespace Lykke.Service.Stratis.API.Services
             return Money.FromUnit(decimalResult, unit);
         }
 
+        public async Task<bool> TryDeleteObservableAddressAsync(ObservationCategory category, string address)
+        {
+            var observableAddress = await _addressRepository.GetAsync(category, address);
+
+            if (observableAddress != null)
+            {
+                await _addressRepository.DeleteAsync(category, address);
+                return true;
+            }
+
+            return false;
+        }
     }
 }

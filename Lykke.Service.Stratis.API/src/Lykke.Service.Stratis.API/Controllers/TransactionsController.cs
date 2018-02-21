@@ -241,6 +241,28 @@ namespace Lykke.Service.Stratis.API.Controllers
         {
             return await Get(operationId, op => op.ToManyInputsResponse());
         }
+
+
+        [HttpDelete("history/{category}/{address}/observation")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> DeleteObservation(
+            [FromRoute]HistoryObservationCategory category,
+            [FromRoute]string address)
+        {
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidAddress(address))
+            {
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
+            }
+
+            if (await _stratisService.TryDeleteObservableAddressAsync((ObservationCategory)category, address))
+                return Ok();
+            else
+                return NoContent();
+        }
+
     }
 
 }
