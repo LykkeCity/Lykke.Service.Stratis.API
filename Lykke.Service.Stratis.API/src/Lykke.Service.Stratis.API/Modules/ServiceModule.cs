@@ -5,8 +5,10 @@ using Lykke.Service.Stratis.API.AzureRepositories.Addresses;
 using Lykke.Service.Stratis.API.AzureRepositories.Balance;
 using Lykke.Service.Stratis.API.AzureRepositories.Broadcast;
 using Lykke.Service.Stratis.API.AzureRepositories.BroadcastInprogress;
+using Lykke.Service.Stratis.API.AzureRepositories.History;
 using Lykke.Service.Stratis.API.AzureRepositories.Operations;
 using Lykke.Service.Stratis.API.AzureRepositories.Settings;
+using Lykke.Service.Stratis.API.Core.Domain.History;
 using Lykke.Service.Stratis.API.Core.Repositories;
 using Lykke.Service.Stratis.API.Core.Services;
 using Lykke.Service.Stratis.API.Core.Settings;
@@ -83,7 +85,6 @@ namespace Lykke.Service.Stratis.API.Modules
                 .WithParameter(TypedParameter.From(connectionStringManager))
                 .SingleInstance();
 
-
             builder.RegisterType<OperationRepository>()
                 .As<IOperationRepository>()
                 .WithParameter(TypedParameter.From(connectionStringManager))
@@ -98,7 +99,10 @@ namespace Lykke.Service.Stratis.API.Modules
                 .As<IAddressRepository>()
                 .WithParameter(TypedParameter.From(connectionStringManager));
 
-
+            builder.RegisterType<HistoryRepository>()
+                .As<IHistoryRepository>()
+                .WithParameter(TypedParameter.From(connectionStringManager))
+                .SingleInstance();
 
             builder.RegisterInstance(Network.GetNetwork(_settings.CurrentValue.NetworkType))
                 .As<Network>();

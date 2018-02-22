@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Service.Stratis.API.Core;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
+using Lykke.Service.Stratis.API.Core.Domain.History;
 using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
 using Lykke.Service.Stratis.API.Core.Domain.Operations;
 using Lykke.Service.Stratis.API.Core.Exceptions;
@@ -24,6 +25,7 @@ namespace Lykke.Service.Stratis.API.Services
     {
         private readonly IBlockchainReader _blockchainReader;
         private readonly IAddressRepository _addressRepository;
+        private readonly IHistoryRepository _historyRepository;
 
         private readonly ILog _log;
         private readonly Network _network;
@@ -42,10 +44,11 @@ namespace Lykke.Service.Stratis.API.Services
             IBroadcastInProgressRepository broadcastInProgressRepository,
             IBalancePositiveRepository balancePositiveRepository,
             IOperationRepository operationRepository,
-           ISettings settings,
+            ISettings settings,
             ISettingsRepository settingsRepository,
             IBlockchainReader blockchainReader,
-            IAddressRepository addressRepository)
+            IAddressRepository addressRepository,
+            IHistoryRepository historyRepository)
         {
             _apiSettings = apiSettings;
             _stratisInsightClient = stratisInsightClient;
@@ -58,6 +61,7 @@ namespace Lykke.Service.Stratis.API.Services
             _settingsRepository = settingsRepository;
             _blockchainReader = blockchainReader;
             _addressRepository = addressRepository;
+            _historyRepository = historyRepository;
             _network = Network.GetNetwork(apiSettings.Network);
         }
 
@@ -155,6 +159,7 @@ namespace Lykke.Service.Stratis.API.Services
                 {
                     throw new ArgumentException($"{nameof(response)} can not be null");
                 }
+
                 if (string.IsNullOrEmpty(response.Txid))
                 {
                     throw new ArgumentException($"{nameof(response)}{nameof(response.Txid)} can not be null or empty");
@@ -216,7 +221,8 @@ namespace Lykke.Service.Stratis.API.Services
             return await _operationRepository.GetAsync(operationId, loadItems);
         }
 
-        public async Task<string> BuildAsync(Guid operationId, OperationType type, Asset asset, bool subtractFee, (BitcoinAddress from, BitcoinAddress to, Money amount)[] items)
+        public async Task<string> BuildAsync(Guid operationId, OperationType type, Asset asset, bool subtractFee,
+            (BitcoinAddress from, BitcoinAddress to, Money amount)[] items)
         {
             var settings = await LoadStoredSettingsAsync();
 
@@ -224,26 +230,36 @@ namespace Lykke.Service.Stratis.API.Services
 
             var inputs =
                 items.GroupBy(x => x.from)
-                     .Select(g => new { Address = g.Key, Amount = g.Select(x => x.amount).Sum() })
-                     .ToList();
+                    .Select(g => new
+                    {
+                        Address = g.Key,
+                        Amount = g.Select(x => x.amount).Sum()
+                    })
+                    .ToList();
 
             var outputs =
                 items.GroupBy(x => x.to)
-                     .Select(g => new { Address = g.Key, Amount = g.Select(x => x.amount).Sum() })
-                     .ToList();
+                    .Select(g => new
+                    {
+                        Address = g.Key,
+                        Amount = g.Select(x => x.amount).Sum()
+                    })
+                    .ToList();
 
             var utxo = await _blockchainReader.ListUnspentAsync(
                 settings.ConfirmationLevel,
                 inputs.Select(from => from.Address.ToString()).ToArray());
 
             var unspentOutputs =
-                inputs.ToDictionary(from => from.Address, from => new Stack<Utxo>(utxo.Where(x => x.Address == from.Address.ToString()).OrderBy(x => x.Confirmations)));
+                inputs.ToDictionary(from => from.Address,
+                    from => new Stack<Utxo>(utxo.Where(x => x.Address == from.Address.ToString())
+                        .OrderBy(x => x.Confirmations)));
 
             var spentOutputs =
                 inputs.ToDictionary(from => from.Address, from => new Stack<Utxo>());
 
             var oddOutputs =
-                inputs.ToDictionary(from => from.Address, from => (TxOut)null);
+                inputs.ToDictionary(from => from.Address, from => (TxOut) null);
 
             var tx = new Transaction();
 
@@ -310,7 +326,8 @@ namespace Lykke.Service.Stratis.API.Services
 
                     if (inputAmount < operationAndFeeAmount)
                     {
-                        throw new NotEnoughFundsException("Not enough funds", from.ToString(), operationAndFeeAmount - inputAmount);
+                        throw new NotEnoughFundsException("Not enough funds", from.ToString(),
+                            operationAndFeeAmount - inputAmount);
                     }
 
                     if (inputAmount > operationAndFeeAmount)
@@ -381,6 +398,24 @@ namespace Lykke.Service.Stratis.API.Services
             }
 
             return false;
+        }
+
+        public async Task<IEnumerable<IHistoryItem>> GetHistoryAsync(ObservationCategory category, string address,
+            string afterHash = null, int take = 100)
+        {
+            if (await IsObservableAsync(category, address))
+            {
+                return await _historyRepository.GetByAddressAsync(category, address, afterHash, take);
+            }
+            else
+            {
+                return new IHistoryItem[0];
+            }
+        }
+
+        public async Task<bool> IsObservableAsync(ObservationCategory category, string address)
+        {
+            return (await _addressRepository.GetAsync(category, address)) != null;
         }
     }
 }

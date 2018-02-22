@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
+using Lykke.Service.Stratis.API.Core.Domain.History;
 using Lykke.Service.Stratis.API.Core.Domain.Operations;
 using NBitcoin;
 
@@ -26,5 +27,7 @@ namespace Lykke.Service.Stratis.API.Core.Settings
             (BitcoinAddress from, BitcoinAddress to, Money amount)[] items);
 
         Task<bool> TryDeleteObservableAddressAsync(ObservationCategory category, string address);
+        Task<IEnumerable<IHistoryItem>> GetHistoryAsync(ObservationCategory category, string address, string afterHash = null, int take = 100);
+
     }
 }

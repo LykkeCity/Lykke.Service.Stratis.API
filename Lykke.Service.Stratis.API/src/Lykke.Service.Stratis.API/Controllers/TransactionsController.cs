@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -261,6 +262,29 @@ namespace Lykke.Service.Stratis.API.Controllers
                 return Ok();
             else
                 return NoContent();
+        }
+
+
+        [HttpGet("history/{category}/{address}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(HistoricalTransactionContract[]))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> GetHistory(
+            [FromRoute]HistoryObservationCategory category,
+            [FromRoute]string address,
+            [FromQuery]string afterHash,
+            [FromQuery]int take)
+        {
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidAddress(address))
+            {
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
+            }
+
+            var txs = await _stratisService.GetHistoryAsync((ObservationCategory)category, address, afterHash, take);
+
+            return Ok(txs
+                .Select(tx => tx.ToHistoricalContract())
+                .ToArray());
         }
 
     }
