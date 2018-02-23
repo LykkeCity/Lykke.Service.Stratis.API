@@ -19,7 +19,7 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Settings
 
         public SettingsRepository(IReloadingManager<string> connectionStringManager, ILog log)
         {
-            _tableStorage = AzureTableStorage<SettingsEntity>.Create(connectionStringManager, "ZcashSettings", log);
+            _tableStorage = AzureTableStorage<SettingsEntity>.Create(connectionStringManager, "StratisSettings", log);
         }
 
         public async Task<ISettings> GetAsync()

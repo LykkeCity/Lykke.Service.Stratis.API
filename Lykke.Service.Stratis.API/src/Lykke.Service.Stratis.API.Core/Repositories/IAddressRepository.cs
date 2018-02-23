@@ -8,9 +8,9 @@ namespace Lykke.Service.Stratis.API.Core.Repositories
 {
     public interface IAddressRepository
     {
-
         Task DeleteAsync(ObservationCategory category, string address);
         Task<IAddress> GetAsync(ObservationCategory category, string address);
-            
+        Task CreateAsync(ObservationCategory category, string address);
+
     }
 }

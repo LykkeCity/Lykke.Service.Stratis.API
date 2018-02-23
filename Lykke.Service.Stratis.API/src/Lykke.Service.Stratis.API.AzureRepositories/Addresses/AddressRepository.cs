@@ -39,6 +39,14 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Addresses
             return await _tableStorage.GetDataAsync(partitionKKey, rowKey);
         }
 
-        
+        public async Task CreateAsync(ObservationCategory category, string address)
+        {
+            var partitionKey = GetPartitionKey(category);
+            var rowKey = GetRowKey(address);
+
+            await _tableStorage.InsertAsync(new AddressEntity(partitionKey, rowKey));
+        }
+
+
     }
 }

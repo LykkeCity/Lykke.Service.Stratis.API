@@ -29,5 +29,6 @@ namespace Lykke.Service.Stratis.API.Core.Settings
         Task<bool> TryDeleteObservableAddressAsync(ObservationCategory category, string address);
         Task<IEnumerable<IHistoryItem>> GetHistoryAsync(ObservationCategory category, string address, string afterHash = null, int take = 100);
 
+        Task<bool> TryCreateObservableAddressAsync(ObservationCategory category, string address);
     }
 }

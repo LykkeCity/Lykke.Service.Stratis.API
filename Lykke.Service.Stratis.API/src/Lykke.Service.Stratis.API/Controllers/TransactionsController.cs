@@ -132,7 +132,7 @@ namespace Lykke.Service.Stratis.API.Controllers
             }
 
             return await Get(operationId, op => op.ToSingleResponse());
-        
+
         }
 
         [HttpDelete("broadcast/{operationId}")]
@@ -187,7 +187,7 @@ namespace Lykke.Service.Stratis.API.Controllers
         [NonAction]
         public async Task<IActionResult> Build(Guid operationId, OperationType type, Asset asset, bool subtractFees, params (BitcoinAddress from, BitcoinAddress to, Money amount)[] items)
         {
-            var operation = await _stratisService.GetOperationAsync(operationId,  false);
+            var operation = await _stratisService.GetOperationAsync(operationId, false);
 
             if (operation != null && operation.State != OperationState.Built)
             {
@@ -231,7 +231,7 @@ namespace Lykke.Service.Stratis.API.Controllers
             }
 
             // return await Build(request.OperationId, OperationType.SingleFromMultiTo, asset, false, items);
-            return await Get( request.OperationId, op => op.ToManyOutputsResponse());
+            return await Get(request.OperationId, op => op.ToManyOutputsResponse());
         }
 
 
@@ -285,6 +285,26 @@ namespace Lykke.Service.Stratis.API.Controllers
             return Ok(txs
                 .Select(tx => tx.ToHistoricalContract())
                 .ToArray());
+        }
+
+        [HttpPost("history/{category}/{address}/observation")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> Observe(
+            [FromRoute]HistoryObservationCategory category,
+            [FromRoute]string address)
+        {
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidAddress(address))
+            {
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
+            }
+
+            if (await _stratisService.TryCreateObservableAddressAsync((ObservationCategory)category, address))
+                return Ok();
+            else
+                return StatusCode(StatusCodes.Status409Conflict);
         }
 
     }

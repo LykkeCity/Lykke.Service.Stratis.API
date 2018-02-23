@@ -47,7 +47,26 @@ namespace Lykke.Service.Stratis.API.Services
             }
         }
 
-       
+        public async Task ImportAddressAsync(string address)
+        {
+            await SendRpcAsync(RPCOperations.importaddress, address, string.Empty, false);
+        }
+
+        public async Task<AddressInfo> ValidateAddressAsync(string address)
+        {
+            return await SendRpcAsync<AddressInfo>(RPCOperations.validateaddress, address);
+        }
+
+        public async Task<RPCResponse> SendRpcAsync(RPCOperations command, params object[] parameters)
+        {
+            var commandName = Enum.GetName(typeof(RPCOperations), command);
+            var result = await _rpcClient.SendCommandAsync(new RPCRequest(commandName , parameters), false);
+
+            result.ThrowIfError();
+
+            return result;
+        }
+
     }
 
 }

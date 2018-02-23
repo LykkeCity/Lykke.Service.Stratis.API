@@ -417,5 +417,31 @@ namespace Lykke.Service.Stratis.API.Services
         {
             return (await _addressRepository.GetAsync(category, address)) != null;
         }
+
+        public async Task<bool> TryCreateObservableAddressAsync(ObservationCategory category, string address)
+        {
+            var addressInfo = await _blockchainReader.ValidateAddressAsync(address);
+
+            if (!addressInfo.IsValid)
+            {
+                throw new InvalidOperationException($"Invalid Stratis address: {address}");
+            }
+
+            if (!addressInfo.IsMine && !addressInfo.IsWatchOnly)
+            {
+                await _blockchainReader.ImportAddressAsync(address);
+            }
+
+            var observableAddress = await _addressRepository.GetAsync(category, address);
+
+            if (observableAddress == null)
+            {
+                await _addressRepository.CreateAsync(category, address);
+                return true;
+            }
+
+            return false;
+        }
+
     }
 }
