@@ -184,6 +184,9 @@ namespace Lykke.Service.Stratis.API.Controllers
             return await Get(request.OperationId, op => op.ToManyInputsResponse());
         }
 
+
+
+
         [NonAction]
         public async Task<IActionResult> Build(Guid operationId, OperationType type, Asset asset, bool subtractFees, params (BitcoinAddress from, BitcoinAddress to, Money amount)[] items)
         {
@@ -216,8 +219,6 @@ namespace Lykke.Service.Stratis.API.Controllers
             });
         }
 
-
-
         [HttpPost("many-outputs")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BuildTransactionResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(BlockchainErrorResponse))]
@@ -234,7 +235,6 @@ namespace Lykke.Service.Stratis.API.Controllers
             return await Get(request.OperationId, op => op.ToManyOutputsResponse());
         }
 
-
         [HttpGet("broadcast/many-inputs/{operationId:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BroadcastedTransactionWithManyInputsResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
@@ -243,6 +243,13 @@ namespace Lykke.Service.Stratis.API.Controllers
             return await Get(operationId, op => op.ToManyInputsResponse());
         }
 
+        [HttpGet("broadcast/many-outputs/{operationId:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BroadcastedTransactionWithManyOutputsResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> GetManyOutputs([FromRoute]Guid operationId)
+        {
+            return await Get(operationId, op => op.ToManyOutputsResponse());
+        }
 
         [HttpDelete("history/{category}/{address}/observation")]
         [ProducesResponseType(StatusCodes.Status200OK)]
