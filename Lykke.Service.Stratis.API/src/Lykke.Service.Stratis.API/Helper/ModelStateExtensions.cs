@@ -4,6 +4,9 @@ using Lykke.Service.Stratis.API.Core;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NBitcoin;
 using System;
+using Common;
+using NBitcoin.JsonConverters;
+
 namespace Lykke.Service.Stratis.API.Helper
 {
     public static class ModelStateExtensions
@@ -157,5 +160,94 @@ namespace Lykke.Service.Stratis.API.Helper
                 return false;
             }
         }
+
+        public static bool IsValidRequest(this ModelStateDictionary self,
+            BroadcastTransactionRequest request,
+            out Transaction transaction,
+            out ICoin[] coins)
+        {
+            (transaction, coins) = (null, null);
+
+            if (!self.IsValid)
+            {
+                return false;
+            }
+
+            try
+            {
+                (transaction, coins) = Serializer.ToObject<(Transaction, ICoin[])>(request.SignedTransaction.Base64ToString());
+            }
+            catch (Exception ex)
+            {
+                self.AddModelError(
+                    nameof(BroadcastTransactionRequest.SignedTransaction),
+                    "Invalid signed transaction data");
+            }
+
+            return self.IsValid;
+        }
+
+
+        public static bool IsValidRequest(this ModelStateDictionary self,
+            BuildSingleTransactionRequest request,
+            out (BitcoinAddress from, BitcoinAddress to, Money amount)[] items,
+            out Asset asset)
+        {
+            items = new(BitcoinAddress from, BitcoinAddress to, Money amount)[1];
+            asset = null;
+
+            if (!self.IsValid)
+            {
+                return false;
+            }
+
+            if (Core.Utils.ValidateAddress(request.FromAddress, out var fromAddress))
+            {
+                items[0].from = fromAddress;
+            }
+            else
+            {
+                self.AddModelError(
+                    nameof(BuildSingleTransactionRequest.FromAddress),
+                    "Invalid sender adddress");
+            }
+
+            if (Core.Utils.ValidateAddress(request.ToAddress, out var toAddress))
+            {
+                items[0].to = toAddress;
+            }
+            else
+            {
+                self.AddModelError(
+                    nameof(BuildSingleTransactionRequest.ToAddress),
+                    "Invalid destination adddress");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.AssetId) || !Constants.Assets.TryGetValue(request.AssetId, out asset))
+            {
+                self.AddModelError(
+                    nameof(BuildSingleTransactionRequest.AssetId),
+                    "Invalid asset");
+            }
+            else
+            {
+                try
+                {
+                    var coins = Conversions.CoinsFromContract(request.Amount, asset.Accuracy);
+                    items[0].amount = Money.FromUnit(coins, asset.Unit);
+                }
+                catch (ConversionException ex)
+                {
+                    self.AddModelError(
+                        nameof(BuildSingleTransactionRequest.Amount),
+                        ex.Message);
+                }
+            }
+
+            return self.IsValid;
+        }
+
+
+
     }
 }

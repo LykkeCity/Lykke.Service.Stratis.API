@@ -12,5 +12,6 @@ namespace Lykke.Service.Stratis.API.Services
         Task<Utxo[]> ListUnspentAsync(int confirmationLevel, params string[] addresses);
         Task ImportAddressAsync(string address);
         Task<AddressInfo> ValidateAddressAsync(string address);
+        Task<string> SendRawTransactionAsync(Transaction transaction);
     }
 }

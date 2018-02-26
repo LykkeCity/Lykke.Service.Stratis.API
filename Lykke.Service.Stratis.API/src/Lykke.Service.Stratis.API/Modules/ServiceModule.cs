@@ -60,10 +60,10 @@ namespace Lykke.Service.Stratis.API.Modules
                 .WithParameter(TypedParameter.From(_settings.CurrentValue))
                             .SingleInstance();
 
-            builder.RegisterType<StratisInsightClient>()
-                .As<IStratisInsightClient>()
-                .WithParameter("url", _settings.CurrentValue.InsightApiUrl)
-                .SingleInstance();
+            //builder.RegisterType<StratisInsightClient>()
+            //    .As<IStratisInsightClient>()
+            //    .WithParameter("url", _settings.CurrentValue.InsightApiUrl)
+            //    .SingleInstance();
 
             builder.RegisterType<BroadcastRepository>()
                 .As<IBroadcastRepository>()

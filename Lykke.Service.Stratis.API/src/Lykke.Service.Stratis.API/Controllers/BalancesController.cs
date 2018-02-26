@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Mvc;
 using Lykke.Service.Stratis.API.Models;
 using Lykke.Service.Stratis.API.Core.Repositories;
 using System.Linq;
+using Lykke.Common.ApiLibrary.Contract;
+using Lykke.Service.Stratis.API.Core;
 using Lykke.Service.Stratis.API.Helper;
 
 namespace Lykke.Service.Stratis.API.Controllers
@@ -34,52 +36,89 @@ namespace Lykke.Service.Stratis.API.Controllers
             _balancePositiveRepository = balancePositiveRepository;
         }
 
+        //[HttpPost("{address}/observation")]
+        //[ProducesResponseType((int)HttpStatusCode.OK)]
+        //public async Task<IActionResult> AddToObservations([Required] string address)
+        //{
+        //    if (string.IsNullOrEmpty(address))
+        //    {
+        //        return BadRequest(ErrorResponse.Create($"{nameof(address)} is null or empty"));
+        //    }
+
+        //    var validAddress = _stratisService.GetBitcoinAddress(address) != null;
+        //    if (!validAddress)
+        //    {
+        //        return BadRequest(ErrorResponse.Create($"{nameof(address)} is not valid"));
+        //    }
+
+        //    var balance = await _balanceRepository.GetAsync(address);
+        //    if (balance != null)
+        //    {
+        //        return new StatusCodeResult(StatusCodes.Status409Conflict);
+        //    }
+
+        //    await _balanceRepository.AddAsync(address);
+        //    await _stratisService.RefreshAddressBalance(address);
+
+        //    return Ok();
+        //}
+
         [HttpPost("{address}/observation")]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        public async Task<IActionResult> AddToObservations([Required] string address)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> Create([FromRoute]string address)
         {
-            if (string.IsNullOrEmpty(address))
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidAddress(address))
             {
-                return BadRequest(ErrorResponse.Create($"{nameof(address)} is null or empty"));
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
 
-            var validAddress = _stratisService.GetBitcoinAddress(address) != null;
-            if (!validAddress)
-            {
-                return BadRequest(ErrorResponse.Create($"{nameof(address)} is not valid"));
-            }
-
-            var balance = await _balanceRepository.GetAsync(address);
-            if (balance != null)
-            {
-                return new StatusCodeResult(StatusCodes.Status409Conflict);
-            }
-
-            await _balanceRepository.AddAsync(address);
-            await _stratisService.RefreshAddressBalance(address);
-
-            return Ok();
+            if (await _stratisService.TryCreateObservableAddressAsync(ObservationCategory.Balance, address))
+                return Ok();
+            else
+                return StatusCode(StatusCodes.Status409Conflict);
         }
 
+
+        //[HttpDelete("{address}/observation")]
+        //[ProducesResponseType((int)HttpStatusCode.OK)]
+        //public async Task<IActionResult> DeleteFromObservations([Required] string address)
+        //{
+        //    if (string.IsNullOrEmpty(address))
+        //    {
+        //        return BadRequest(ErrorResponse.Create($"{nameof(address)} is null or empty"));
+        //    }
+
+        //    var balance = await _balanceRepository.GetAsync(address);
+        //    if (balance == null)
+        //    {
+        //        return new StatusCodeResult(StatusCodes.Status204NoContent);
+        //    }
+
+        //    await _balanceRepository.DeleteAsync(address);
+        //    await _balancePositiveRepository.DeleteAsync(address);
+
+        //    return Ok();
+        //}
+
         [HttpDelete("{address}/observation")]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        public async Task<IActionResult> DeleteFromObservations([Required] string address)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> Delete([FromRoute]string address)
         {
-            if (string.IsNullOrEmpty(address))
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidAddress(address))
             {
-                return BadRequest(ErrorResponse.Create($"{nameof(address)} is null or empty"));
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
 
-            var balance = await _balanceRepository.GetAsync(address);
-            if (balance == null)
-            {
-                return new StatusCodeResult(StatusCodes.Status204NoContent);
-            }
-
-            await _balanceRepository.DeleteAsync(address);
-            await _balancePositiveRepository.DeleteAsync(address);
-
-            return Ok();
+            if (await _stratisService.TryDeleteObservableAddressAsync(ObservationCategory.Balance, address))
+                return Ok();
+            else
+                return NoContent();
         }
 
         [HttpGet]

@@ -33,92 +33,142 @@ namespace Lykke.Service.Stratis.API.Controllers
     {
         private readonly IStratisService _stratisService;
         private readonly ILog _log;
-        private readonly IStratisInsightClient _stratisInsightClient;
+      //  private readonly IStratisInsightClient _stratisInsightClient;
 
-        public TransactionsController(ILog log, IStratisService stratisService, IStratisInsightClient stratisInsightClient)
+        public TransactionsController(ILog log, IStratisService stratisService)//, IStratisInsightClient stratisInsightClient)
         {
             _log = log;
-            _stratisInsightClient = stratisInsightClient;
+        //    _stratisInsightClient = stratisInsightClient;
             _stratisService = stratisService;
         }
 
-        [HttpPost]
-        [ProducesResponseType(typeof(BuildTransactionResponse), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> Build([Required, FromBody]  BuildSingleTransactionRequest request)
+        //[HttpPut]
+        //[ProducesResponseType(typeof(BuildTransactionResponse), (int)HttpStatusCode.OK)]
+        //public async Task<IActionResult> Build([Required, FromBody]  BuildSingleTransactionRequest request)
+        //{
+        //    if (!ModelState.IsValid)
+        //    {
+        //        return BadRequest(ErrorResponse.Create("ValidationError", ModelState));
+        //    }
+
+        //    var fromAddress = _stratisService.GetBitcoinAddress(request.FromAddress);
+        //    if (fromAddress == null)
+        //    {
+        //        return BadRequest(ErrorResponse.Create($"{nameof(request.FromAddress)} is not a valid"));
+        //    }
+
+        //    var toAddress = _stratisService.GetBitcoinAddress(request.ToAddress);
+        //    if (toAddress == null)
+        //    {
+        //        return BadRequest(ErrorResponse.Create($"{nameof(request.ToAddress)} is not a valid"));
+        //    }
+
+        //    if (request.AssetId != Asset.Stratis.Id)
+        //    {
+        //        return BadRequest(ErrorResponse.Create($"{nameof(request.AssetId)} was not found"));
+        //    }
+
+        //    var amount = Conversions.CoinsFromContract(request.Amount, Asset.Stratis.Accuracy);
+        //    var fromAddressBalance = await _stratisService.GetAddressBalance(request.FromAddress);
+        //    var fee = _stratisService.GetFee();
+        //    var requiredBalance = request.IncludeFee ? amount : amount + fee;
+
+        //    if (amount < fee)
+        //    {
+        //        return StatusCode(StatusCodes.Status406NotAcceptable,
+        //            ErrorResponse.Create($"{nameof(amount)}={amount} can not be less then {fee}"));
+        //    }
+        //    if (requiredBalance > fromAddressBalance)
+        //    {
+        //        return StatusCode(StatusCodes.Status406NotAcceptable,
+        //            ErrorResponse.Create($"There no enough funds on {nameof(request.FromAddress)}. " +
+        //            $"Required Balance={requiredBalance}. Available balance={fromAddressBalance}"));
+        //    }
+
+        //    var transactionContext = await _stratisService.BuildTransactionAsync(request.OperationId, fromAddress,
+        //        toAddress, amount, request.IncludeFee);
+
+        //    return Ok(new BuildTransactionResponse()
+        //    {
+        //        TransactionContext = transactionContext
+        //    });
+        //}
+
+        
+        [HttpPost("single")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BuildTransactionResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(BlockchainErrorResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> Build([FromBody]BuildSingleTransactionRequest request)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid || 
+                !ModelState.IsValidRequest(request, out var items, out var asset))
             {
-                return BadRequest(ErrorResponse.Create("ValidationError", ModelState));
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
 
-            var fromAddress = _stratisService.GetBitcoinAddress(request.FromAddress);
-            if (fromAddress == null)
-            {
-                return BadRequest(ErrorResponse.Create($"{nameof(request.FromAddress)} is not a valid"));
-            }
-
-            var toAddress = _stratisService.GetBitcoinAddress(request.ToAddress);
-            if (toAddress == null)
-            {
-                return BadRequest(ErrorResponse.Create($"{nameof(request.ToAddress)} is not a valid"));
-            }
-
-            if (request.AssetId != Asset.Stratis.Id)
-            {
-                return BadRequest(ErrorResponse.Create($"{nameof(request.AssetId)} was not found"));
-            }
-
-            var amount = Conversions.CoinsFromContract(request.Amount, Asset.Stratis.Accuracy);
-            var fromAddressBalance = await _stratisService.GetAddressBalance(request.FromAddress);
-            var fee = _stratisService.GetFee();
-            var requiredBalance = request.IncludeFee ? amount : amount + fee;
-
-            if (amount < fee)
-            {
-                return StatusCode(StatusCodes.Status406NotAcceptable,
-                    ErrorResponse.Create($"{nameof(amount)}={amount} can not be less then {fee}"));
-            }
-            if (requiredBalance > fromAddressBalance)
-            {
-                return StatusCode(StatusCodes.Status406NotAcceptable,
-                    ErrorResponse.Create($"There no enough funds on {nameof(request.FromAddress)}. " +
-                    $"Required Balance={requiredBalance}. Available balance={fromAddressBalance}"));
-            }
-
-            var transactionContext = await _stratisService.BuildTransactionAsync(request.OperationId, fromAddress,
-                toAddress, amount, request.IncludeFee);
-
-            return Ok(new BuildTransactionResponse()
-            {
-                TransactionContext = transactionContext
-            });
+            return await Build(request.OperationId, OperationType.SingleFromSingleTo, asset, request.IncludeFee, items);
         }
+        //[HttpPost("broadcast2")]
+        //public async Task<IActionResult> Broadcast2([Required, FromBody] BroadcastTransactionRequest request)
+        //{
+        //    if (!ModelState.IsValid)
+        //    {
+        //        return BadRequest(ErrorResponse.Create("ValidationError", ModelState));
+        //    }
+
+        //    var broadcast = await _stratisService.GetBroadcastAsync(request.OperationId);
+        //    if (broadcast != null)
+        //    {
+        //        return new StatusCodeResult(StatusCodes.Status409Conflict);
+        //    }
+
+        //    var transaction = _stratisService.GetTransaction(request.SignedTransaction);
+        //    if (transaction == null)
+        //    {
+        //        return BadRequest(ErrorResponse.Create($"{nameof(request.SignedTransaction)} is not a valid"));
+        //    }
+
+        //    await _stratisService.BroadcastAsync(transaction, request.OperationId);
+
+        //    return Ok();
+        //}
 
 
         [HttpPost("broadcast")]
-        public async Task<IActionResult> Broadcast([Required, FromBody] BroadcastTransactionRequest request)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(BlockchainErrorResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ErrorResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ErrorResponse))]
+        public async Task<IActionResult> Broadcast([FromBody]BroadcastTransactionRequest request)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidRequest(request, out var transaction, out var coins))
             {
-                return BadRequest(ErrorResponse.Create("ValidationError", ModelState));
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
 
-            var broadcast = await _stratisService.GetBroadcastAsync(request.OperationId);
-            if (broadcast != null)
+            _stratisService.EnsureSigned(transaction, coins);
+
+            var operation = await _stratisService.GetOperationAsync(request.OperationId, false);
+
+            if (operation == null)
             {
-                return new StatusCodeResult(StatusCodes.Status409Conflict);
+                return StatusCode(StatusCodes.Status404NotFound,
+                    ErrorResponse.Create("Transaction must be built beforehand by Stratis API (to be successfully broadcasted then)"));
             }
 
-            var transaction = _stratisService.GetTransaction(request.SignedTransaction);
-            if (transaction == null)
+            if (operation != null && operation.State != OperationState.Built)
             {
-                return BadRequest(ErrorResponse.Create($"{nameof(request.SignedTransaction)} is not a valid"));
+                return StatusCode(StatusCodes.Status409Conflict,
+                    ErrorResponse.Create($"Operation is already {Enum.GetName(typeof(OperationState), operation.State).ToLower()}"));
             }
 
-            await _stratisService.BroadcastAsync(transaction, request.OperationId);
+            await _stratisService.BroadcastAsync( transaction, operation.OperationId);
 
             return Ok();
         }
+
 
         [HttpGet("broadcast/single/{operationId}")]
         [ProducesResponseType(typeof(BroadcastedSingleTransactionResponse), StatusCodes.Status200OK)]
@@ -202,7 +252,7 @@ namespace Lykke.Service.Stratis.API.Controllers
 
             try
             {
-                signContext = await _stratisService.BuildAsync(operationId, OperationType.SingleFromSingleTo, asset, subtractFees, items);
+                signContext = await _stratisService.BuildAsync(operationId, type, asset, subtractFees, items);
             }
             catch (DustException)
             {

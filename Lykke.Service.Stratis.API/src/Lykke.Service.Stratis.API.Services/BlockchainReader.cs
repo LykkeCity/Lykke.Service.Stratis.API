@@ -67,6 +67,10 @@ namespace Lykke.Service.Stratis.API.Services
             return result;
         }
 
+        public async Task<string> SendRawTransactionAsync(Transaction transaction)
+        {
+            return (await SendRpcAsync(RPCOperations.sendrawtransaction, transaction.ToHex())).ResultString;
+        }
     }
 
 }

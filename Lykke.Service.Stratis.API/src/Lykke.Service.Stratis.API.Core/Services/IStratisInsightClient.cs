@@ -6,11 +6,11 @@ using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
 
 namespace Lykke.Service.Stratis.API.Core.Services
 {
-    public interface IStratisInsightClient
+    public interface IStratisInsightClient2
     {
-        Task<ulong> GetBalanceSatoshis(string address);
-        Task<TxUnspent[]> GetTxsUnspentAsync(string address);
-        Task<TxBroadcast> BroadcastTxAsync(string v);
-        Task<long?> GetLatestBlockHeight();
+     //   Task<ulong> GetBalanceSatoshis(string address);
+      //  Task<TxUnspent[]> GetTxsUnspentAsync(string address);
+     //   Task<TxBroadcast> BroadcastTxAsync(string v);
+       // Task<long?> GetLatestBlockHeight();
     }
 }

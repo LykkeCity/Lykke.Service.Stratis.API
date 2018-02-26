@@ -78,7 +78,49 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Operations
 
             return operation;
         }
-      
+
+        public async Task<IOperation> UpdateAsync(Guid operationId,
+            DateTime? sentUtc = null, DateTime? completedUtc = null, DateTime? failedUtc = null, DateTime? deletedUtc = null,
+            string hash = null, string error = null)
+        {
+            var partitionKey = GetOperationPartitionKey(operationId);
+            var rowKey = GetOperationRowKey();
+            var entity = await _operationStorage.MergeAsync(partitionKey, rowKey, e =>
+            {
+                e.State =
+                    deletedUtc.HasValue ? OperationState.Deleted :
+                    failedUtc.HasValue ? OperationState.Failed :
+                    completedUtc.HasValue ? OperationState.Completed :
+                    sentUtc.HasValue ? OperationState.Sent :
+                    e.State;
+                e.SentUtc = sentUtc ?? e.SentUtc;
+                e.CompletedUtc = completedUtc ?? e.CompletedUtc;
+                e.FailedUtc = failedUtc ?? e.FailedUtc;
+                e.DeletedUtc = deletedUtc ?? e.DeletedUtc;
+                e.Hash = hash ?? e.Hash;
+                e.Error = error ?? e.Error;
+                return e;
+            });
+
+            await UpsertIndexAsync(hash, operationId);
+
+            return entity;
+        }
+
+        public async Task UpsertIndexAsync(string hash, Guid operationId)
+        {
+            if (!string.IsNullOrWhiteSpace(hash))
+            {
+                await _indexStorage.InsertOrReplaceAsync(
+                    new IndexEntity
+                    {
+                        PartitionKey = GetIndexPartitionKey(hash),
+                        RowKey = GetIndexRowKey(),
+                        OperationId = operationId
+                    });
+            }
+        }
+
 
         public class IndexEntity : TableEntity
         {

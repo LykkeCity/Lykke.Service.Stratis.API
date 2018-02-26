@@ -11,7 +11,7 @@ using Lykke.Service.Stratis.API.Services.Helper;
 
 namespace Lykke.Service.Stratis.API.Services
 {
-    public class StratisInsightClient:IStratisInsightClient 
+    public class StratisInsightClient//:IStratisInsightClient 
     {
         private readonly ILog _log;
         private readonly string _url;
@@ -117,14 +117,29 @@ namespace Lykke.Service.Stratis.API.Services
             return await Retry.Try(() => url.GetJsonAsync<T>(), NeedToRetryException, tryCount, _log);
         }
 
-        Task<long?> IStratisInsightClient.GetLatestBlockHeight()
+        public async Task<long?> GetLatestBlockHeight()
         {
-            throw new NotImplementedException();
+            var url = $"{_url}/blocks?limit=1";
+
+            try
+            {
+                var response = await GetJson<BlocksInfo>(url);
+
+                return response.Blocks[0].Height;
+            }
+            catch (FlurlHttpException ex) when (ex.Call.Response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                await _log.WriteErrorAsync(nameof(StratisInsightClient), nameof(GetLatestBlockHeight),
+                    $"Failed to get json for url='{url}'", ex);
+
+                throw;
+            }
         }
 
-        Task<TxUnspent[]> IStratisInsightClient.GetTxsUnspentAsync(string address)
-        {
-            throw new NotImplementedException();
-        }
+       
     }
 }
