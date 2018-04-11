@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NBitcoin;
 using System;
 using Common;
+using Microsoft.WindowsAzure.Storage.Table;
 using NBitcoin.JsonConverters;
+using Newtonsoft.Json;
+using Lykke.Common;
 
 namespace Lykke.Service.Stratis.API.Helper
 {
@@ -247,7 +250,24 @@ namespace Lykke.Service.Stratis.API.Helper
             return self.IsValid;
         }
 
+        public static bool IsValidContinuation(this ModelStateDictionary self, string continuation)
+        {
+            if (string.IsNullOrEmpty(continuation))
+            {
+                return true;
+            }
 
+            try
+            {
+                JsonConvert.DeserializeObject<TableContinuationToken>(Core.Utils.HexToString(continuation));
+                return true;
+            }
+            catch
+            {
+                self.AddModelError("continuation", "Invalid continuation token");
+                return false;
+            }
+        }
 
     }
 }

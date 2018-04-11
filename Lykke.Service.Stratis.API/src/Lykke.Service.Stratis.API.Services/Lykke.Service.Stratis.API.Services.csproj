@@ -9,11 +9,21 @@
 
   <ItemGroup>
     <PackageReference Include="flurl.http" Version="2.1.1" />
-    <PackageReference Include="Lykke.Common" Version="4.2.0" />
+    <PackageReference Include="Lykke.Common" Version="6.3.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Lykke.Service.Stratis.API.AzureRepositories\Lykke.Service.Stratis.API.AzureRepositories.csproj" />
     <ProjectReference Include="..\Lykke.Service.Stratis.API.Core\Lykke.Service.Stratis.API.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="HashLib">
+      <HintPath>..\..\Libraries\HashLib.dll</HintPath>
+    </Reference>
+    <Reference Include="NBitcoin">
+      <HintPath>..\..\Libraries\NBitcoin.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

@@ -11,10 +11,8 @@ using Lykke.SettingsReader;
 
 namespace Lykke.Service.Stratis.API.AzureRepositories.Balance
 {
-    public class BalanceRepository : IBalanceRepository
+    public class BalanceRepository //: IBalanceRepository
     {
-
-
         private INoSQLTableStorage<BalanceEntity> _table;
         private static string GetPartitionKey() => "";
         private static string GetRowKey(string address) => address;

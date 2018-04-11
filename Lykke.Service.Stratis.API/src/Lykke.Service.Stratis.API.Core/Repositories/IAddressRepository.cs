@@ -12,5 +12,6 @@ namespace Lykke.Service.Stratis.API.Core.Repositories
         Task<IAddress> GetAsync(ObservationCategory category, string address);
         Task CreateAsync(ObservationCategory category, string address);
 
+        Task<(IEnumerable<IAddress> items, string continuation)> GetByCategoryAsync(ObservationCategory category, string continuation = null, int take = 100);
     }
 }

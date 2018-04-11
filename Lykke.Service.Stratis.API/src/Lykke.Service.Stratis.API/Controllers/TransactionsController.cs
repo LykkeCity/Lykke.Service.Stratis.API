@@ -175,14 +175,7 @@ namespace Lykke.Service.Stratis.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
         public async Task<IActionResult> GetBroadcast([Required] Guid operationId)
         {
-            var broadcast = await _stratisService.GetBroadcastAsync(operationId);
-            if (broadcast == null)
-            {
-                return NoContent();
-            }
-
             return await Get(operationId, op => op.ToSingleResponse());
-
         }
 
         [HttpDelete("broadcast/{operationId}")]
@@ -192,14 +185,15 @@ namespace Lykke.Service.Stratis.API.Controllers
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
         public async Task<IActionResult> DeleteBroadcast([Required] Guid operationId)
         {
-            var broadcast = await _stratisService.GetBroadcastAsync(operationId);
-            if (broadcast == null)
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidOperationId(operationId))
             {
-                return NoContent();
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
 
-            await _stratisService.DeleteBroadcastAsync(broadcast);
-
+            if (!await  _stratisService.DeleteBroadcastAsync(operationId))
+                return NoContent();
+          
             return Ok();
         }
 

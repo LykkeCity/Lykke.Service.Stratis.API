@@ -6,7 +6,7 @@ using Lykke.Service.Stratis.API.Core.Domain.Balance;
 
 namespace Lykke.Service.Stratis.API.Core.Repositories
 {
-    public interface IBalanceRepository
+    public interface IBalanceRepository2
     {
         Task AddAsync(string address);
        

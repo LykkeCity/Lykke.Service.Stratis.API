@@ -27,5 +27,6 @@ namespace Lykke.Service.Stratis.API.AzureRepositories.Settings
         public decimal MaxFee { get; set; }
         public decimal MinFee { get; set; }
         public bool UseDefaultFee { get; set; }
+        public bool SkipNodeCheck { get; }
     }
 }

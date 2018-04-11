@@ -11,7 +11,7 @@ using Lykke.SettingsReader;
 
 namespace Lykke.Service.Stratis.API.AzureRepositories.BroadcastInprogress
 {
-    public class BroadcastInProgressRepository : IBroadcastInProgressRepository
+    public class BroadcastInProgressRepository //: IBroadcastInProgressRepository
     {
         private readonly INoSQLTableStorage<BroadcastInProgressEntity> _table;
         private static string GetPartitionKey() => "";

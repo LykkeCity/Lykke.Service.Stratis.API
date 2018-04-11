@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Lykke.Service.Stratis.API.Core.Domain.Addresses;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
 using Lykke.Service.Stratis.API.Core.Domain.History;
 using Lykke.Service.Stratis.API.Core.Domain.Operations;
@@ -15,10 +16,10 @@ namespace Lykke.Service.Stratis.API.Core.Settings
         decimal GetFee();
        // Task<decimal> GetAddressBalance(string fromAddress);
       //  Task<string> BuildTransactionAsync(Guid requestOperationId, BitcoinAddress fromAddress, BitcoinAddress toAddress, decimal amount, bool requestIncludeFee);
-        Task<IBroadcast> GetBroadcastAsync(Guid operationId);
+       // Task<IBroadcast> GetBroadcastAsync(Guid operationId);
         Transaction GetTransaction(string signedTransaction);
         Task BroadcastAsync(Transaction transaction, Guid operationId);
-        Task DeleteBroadcastAsync(IBroadcast broadcast);
+        Task<bool> DeleteBroadcastAsync(Guid operationId);
 
        // Task<decimal> RefreshAddressBalance(string address, long? block = null);
         Task<IOperation> GetOperationAsync(Guid operationId, bool loadItems = true);
@@ -28,8 +29,10 @@ namespace Lykke.Service.Stratis.API.Core.Settings
 
         Task<bool> TryDeleteObservableAddressAsync(ObservationCategory category, string address);
         Task<IEnumerable<IHistoryItem>> GetHistoryAsync(ObservationCategory category, string address, string afterHash = null, int take = 100);
-
+        Task HandleHistoryAsync();
         Task<bool> TryCreateObservableAddressAsync(ObservationCategory category, string address);
         void EnsureSigned(Transaction transaction, ICoin[] coins);
+        Task<(string continuation, IEnumerable<AddressBalance> items)> GetBalancesAsync(string continuation = null, int take = 100);
+
     }
 }

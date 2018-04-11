@@ -13,5 +13,7 @@ namespace Lykke.Service.Stratis.API.Services
         Task ImportAddressAsync(string address);
         Task<AddressInfo> ValidateAddressAsync(string address);
         Task<string> SendRawTransactionAsync(Transaction transaction);
+        Task<RawTransaction> GetRawTransactionAsync(string hash);
+        Task<string[]> GetAddresssesAsync();
     }
 }

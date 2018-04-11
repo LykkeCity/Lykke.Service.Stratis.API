@@ -24,45 +24,15 @@ namespace Lykke.Service.Stratis.API.Controllers
     {
 
         private readonly IStratisService _stratisService;
-        private readonly IBalanceRepository _balanceRepository;
         private readonly IBalancePositiveRepository _balancePositiveRepository;
 
         public BalancesController(IStratisService stratisService,
-            IBalanceRepository balanceRepository,
             IBalancePositiveRepository balancePositiveRepository)
         {
             _stratisService = stratisService;
-            _balanceRepository = balanceRepository;
             _balancePositiveRepository = balancePositiveRepository;
         }
-
-        //[HttpPost("{address}/observation")]
-        //[ProducesResponseType((int)HttpStatusCode.OK)]
-        //public async Task<IActionResult> AddToObservations([Required] string address)
-        //{
-        //    if (string.IsNullOrEmpty(address))
-        //    {
-        //        return BadRequest(ErrorResponse.Create($"{nameof(address)} is null or empty"));
-        //    }
-
-        //    var validAddress = _stratisService.GetBitcoinAddress(address) != null;
-        //    if (!validAddress)
-        //    {
-        //        return BadRequest(ErrorResponse.Create($"{nameof(address)} is not valid"));
-        //    }
-
-        //    var balance = await _balanceRepository.GetAsync(address);
-        //    if (balance != null)
-        //    {
-        //        return new StatusCodeResult(StatusCodes.Status409Conflict);
-        //    }
-
-        //    await _balanceRepository.AddAsync(address);
-        //    await _stratisService.RefreshAddressBalance(address);
-
-        //    return Ok();
-        //}
-
+        
         [HttpPost("{address}/observation")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ErrorResponse))]
@@ -74,35 +44,13 @@ namespace Lykke.Service.Stratis.API.Controllers
             {
                 return BadRequest(ErrorResponseFactory.Create(ModelState));
             }
-
+            
             if (await _stratisService.TryCreateObservableAddressAsync(ObservationCategory.Balance, address))
                 return Ok();
             else
                 return StatusCode(StatusCodes.Status409Conflict);
         }
-
-
-        //[HttpDelete("{address}/observation")]
-        //[ProducesResponseType((int)HttpStatusCode.OK)]
-        //public async Task<IActionResult> DeleteFromObservations([Required] string address)
-        //{
-        //    if (string.IsNullOrEmpty(address))
-        //    {
-        //        return BadRequest(ErrorResponse.Create($"{nameof(address)} is null or empty"));
-        //    }
-
-        //    var balance = await _balanceRepository.GetAsync(address);
-        //    if (balance == null)
-        //    {
-        //        return new StatusCodeResult(StatusCodes.Status204NoContent);
-        //    }
-
-        //    await _balanceRepository.DeleteAsync(address);
-        //    await _balancePositiveRepository.DeleteAsync(address);
-
-        //    return Ok();
-        //}
-
+        
         [HttpDelete("{address}/observation")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -121,15 +69,36 @@ namespace Lykke.Service.Stratis.API.Controllers
                 return NoContent();
         }
 
-        [HttpGet]
-        public async Task<PaginationResponse<WalletBalanceContract>> Get([Required, FromQuery] int take, [FromQuery] string continuation)
-        {
-            var result = await _balancePositiveRepository.GetAsync(take, continuation);
+        //[HttpGet]
+        //public async Task<PaginationResponse<WalletBalanceContract>> Get([Required, FromQuery] int take, [FromQuery] string continuation)
+        //{
+        //    var result = await _balancePositiveRepository.GetAsync(take, continuation);
 
-            return PaginationResponse.From(
-                result.Continuation,
-                result.Items.Select(f => f.ToWalletBalanceContract()).ToArray()
-            );
+        //    return PaginationResponse.From(
+        //        result.Continuation,
+        //        result.Items.Select(f => f.ToWalletBalanceContract()).ToArray()
+        //    );
+        //}
+
+        [HttpGet]
+        [ProducesResponseType(typeof(PaginationResponse<WalletBalanceContract>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Get(
+            [FromQuery]string continuation,
+            [FromQuery]int take)
+        {
+            if (!ModelState.IsValid ||
+                !ModelState.IsValidContinuation(continuation))
+            {
+                return BadRequest(ErrorResponseFactory.Create(ModelState));
+            }
+
+            var result = await _stratisService.GetBalancesAsync(continuation, take);
+
+            return Ok(PaginationResponse.From(
+                result.continuation,
+                result.items.Select(b => b.ToWalletContract()).ToArray()));
         }
+
     }
 }

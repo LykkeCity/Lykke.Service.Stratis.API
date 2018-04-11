@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Service.Stratis.API.Services.Models;
-using NBitcoin;
+using NBitcoin ;
 using NBitcoin.RPC;
 using Newtonsoft.Json;
 
@@ -28,9 +29,24 @@ namespace Lykke.Service.Stratis.API.Services
         
         public async Task<T> SendRpcAsync<T>(RPCOperations command, params object[] parameters)
         {
-            var result = await _rpcClient.SendCommandAsync(command, parameters);
-
-            result.ThrowIfError();
+          
+            //var comm = command.ToString();
+            //var result = await _rpcClient.SendCommandAsync(command, parameters);
+            //var result = await _rpcClient.SendCommandAsync(new RPCRequest(comm, parameters), false);
+            //int timeout = 10000;
+            //var result = _rpcClient.SendCommandAsync(command, parameters);
+            //if (await Task.WhenAny(result, Task.Delay(timeout)) == result)
+            //{
+            //    // Task completed within timeout.
+            //    // Consider that the task may have faulted or been canceled.
+            //    // We re-await the task so that any exceptions/cancellation is rethrown.
+            //    await result;
+            //}
+            //else
+            //{
+            //result.ThrowIfError();
+            //    // timeout/cancellation logic
+            //}
 
             // NBitcoin can not deserialize shielded tx data,
             // that's why custom models are used widely instead of built-in NBitcoin commands;
@@ -38,13 +54,25 @@ namespace Lykke.Service.Stratis.API.Services
 
             try
             {
+                Network rpcNetwork = Network.StratisTest;
+                NetworkCredential credentials = new NetworkCredential("stratisuser", "lykkelykke");
+                RPCClient rpc = new RPCClient(credentials, new Uri("http://51.144.161.23:5333"), rpcNetwork);
+
+                var result = await rpc.SendCommandAsync(new RPCRequest(command.ToString(), parameters), false);
+
+                result.ThrowIfError();
                 return result.Result.ToObject<T>();
             }
-            catch (JsonSerializationException jex)
+            catch (Exception ex)
             {
-                await _log.WriteErrorAsync(nameof(SendRpcAsync), $"Command: {command}, Response: {result.ResultString}", jex);
+                await _log.WriteErrorAsync(nameof(SendRpcAsync), $"Command: {command}, Response: {ex.Message}", ex);
                 throw;
             }
+            //catch (JsonSerializationException jex)
+            //{
+            //    await _log.WriteErrorAsync(nameof(SendRpcAsync), $"Command: {command}, Response: {result.ResultString}", jex);
+            //    throw;
+            //}
         }
 
         public async Task ImportAddressAsync(string address)
@@ -71,6 +99,17 @@ namespace Lykke.Service.Stratis.API.Services
         {
             return (await SendRpcAsync(RPCOperations.sendrawtransaction, transaction.ToHex())).ResultString;
         }
+
+        public async Task<RawTransaction> GetRawTransactionAsync(string hash)
+        {
+            return await SendRpcAsync<RawTransaction>(RPCOperations.getrawtransaction, hash, 1);
+        }
+
+        public async Task<string[]> GetAddresssesAsync()
+        {
+            return await SendRpcAsync<string[]>(RPCOperations.getaddressesbyaccount, string.Empty);
+        }
+
     }
 
 }

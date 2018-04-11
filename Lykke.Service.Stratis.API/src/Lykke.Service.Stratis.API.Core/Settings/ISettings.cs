@@ -12,5 +12,6 @@ namespace Lykke.Service.Stratis.API.Core.Settings
         decimal MaxFee { get; }
         decimal MinFee { get; }
         bool UseDefaultFee { get; }
+        bool SkipNodeCheck { get; }
     }
 }

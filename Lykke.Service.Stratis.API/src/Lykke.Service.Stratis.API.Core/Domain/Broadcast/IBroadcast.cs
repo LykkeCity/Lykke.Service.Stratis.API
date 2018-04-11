@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using NBitcoin.Protocol.Behaviors;
 
 namespace Lykke.Service.Stratis.API.Core.Domain.Broadcast
 {

@@ -16,7 +16,7 @@ namespace Lykke.Service.Stratis.API.Helper
                 AssetId = self.AssetId,
                 FromAddress = self.FromAddress,
                 Hash = self.Hash,
-                OperationId = self.OperationId ?? Guid.Empty,
+                //OperationId = self.OperationId ?? Guid.Empty,
                 Timestamp = self.TimestampUtc,
                 ToAddress = self.ToAddress
             };

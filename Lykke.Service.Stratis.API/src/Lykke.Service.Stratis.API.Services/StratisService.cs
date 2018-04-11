@@ -5,7 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Service.Stratis.API.AzureRepositories.Addresses;
 using Lykke.Service.Stratis.API.Core;
+using Lykke.Service.Stratis.API.Core.Domain.Addresses;
 using Lykke.Service.Stratis.API.Core.Domain.Broadcast;
 using Lykke.Service.Stratis.API.Core.Domain.History;
 using Lykke.Service.Stratis.API.Core.Domain.InsightClient;
@@ -30,48 +32,27 @@ namespace Lykke.Service.Stratis.API.Services
 
         private readonly ILog _log;
         private readonly Network _network;
-     //   private readonly IStratisInsightClient _stratisInsightClient;
         private readonly StratisAPISettings _apiSettings;
-        private readonly IBroadcastRepository _broadcastRepository;
-        private readonly IBroadcastInProgressRepository _broadcastInProgressRepository;
-        private readonly IBalancePositiveRepository _balancePositiveRepository;
         private readonly IOperationRepository _operationRepository;
         private readonly ISettingsRepository _settingsRepository;
-        private readonly ISettings _settings;
 
         public StratisService(ILog log, StratisAPISettings apiSettings,
-           // IStratisInsightClient stratisInsightClient,
-            IBroadcastRepository broadcastRepository,
-            IBroadcastInProgressRepository broadcastInProgressRepository,
-            IBalancePositiveRepository balancePositiveRepository,
+  
             IOperationRepository operationRepository,
-            ISettings settings,
             ISettingsRepository settingsRepository,
             IBlockchainReader blockchainReader,
             IAddressRepository addressRepository,
             IHistoryRepository historyRepository)
         {
             _apiSettings = apiSettings;
-          //  _stratisInsightClient = stratisInsightClient;
             _log = log;
-            _broadcastRepository = broadcastRepository;
-            _broadcastInProgressRepository = broadcastInProgressRepository;
-            _balancePositiveRepository = balancePositiveRepository;
             _operationRepository = operationRepository;
-            _settings = settings;
             _settingsRepository = settingsRepository;
             _blockchainReader = blockchainReader;
             _addressRepository = addressRepository;
             _historyRepository = historyRepository;
             _network = Network.GetNetwork(apiSettings.Network);
         }
-
-        //public async Task<decimal> GetAddressBalance(string address)
-        //{
-        //    var balanceSatoshis = await _stratisInsightClient.GetBalanceSatoshis(address);
-        //    var balance = Money.Satoshis(balanceSatoshis).ToDecimal(Asset.Stratis.Unit);
-        //    return balance;
-        //}
 
         public BitcoinAddress GetBitcoinAddress(string address)
         {
@@ -89,55 +70,7 @@ namespace Lykke.Service.Stratis.API.Services
         {
             return _apiSettings.Fee;
         }
-
-
-
-        //public async Task<string> BuildTransactionAsync(Guid operationId, BitcoinAddress fromAddress,
-        //    BitcoinAddress toAddress, decimal amount, bool includeFee)
-        //{
-        //    var sendAmount = Money.FromUnit(amount, Asset.Stratis.Unit);
-        //    var txsUnspent = await _stratisInsightClient.GetTxsUnspentAsync(fromAddress.ToString());
-
-        //    var builder = new TransactionBuilder()
-        //        .Send(toAddress, sendAmount)
-        //        .SetChange(fromAddress)
-        //        .SetTransactionPolicy(new StandardTransactionPolicy
-        //        {
-        //            CheckFee = false
-        //        });
-
-        //    if (includeFee)
-        //    {
-        //        builder.SubtractFees();
-        //    }
-
-        //    foreach (var txUnspent in txsUnspent)
-        //    {
-        //        var coin = new Coin(
-        //            fromTxHash: uint256.Parse(txUnspent.Txid),
-        //            fromOutputIndex: txUnspent.Vout,
-        //            amount: Money.Coins(txUnspent.Amount),
-        //            scriptPubKey: fromAddress.ScriptPubKey);
-
-        //        builder.AddCoins(coin);
-        //    }
-
-        //    var feeMoney = Money.FromUnit(_apiSettings.Fee, Asset.Stratis.Unit);
-
-        //    var tx = builder
-        //        .SendFees(feeMoney)
-        //        .BuildTransaction(false);
-
-        //    var coins = builder.FindSpentCoins(tx);
-
-        //    return Serializer.ToString((tx: tx, coins: coins));
-        //}
-
-        public async Task<IBroadcast> GetBroadcastAsync(Guid operationId)
-        {
-            return await _broadcastRepository.GetAsync(operationId);
-        }
-
+        
         public Transaction GetTransaction(string transactionHex)
         {
             try
@@ -157,43 +90,23 @@ namespace Lykke.Service.Stratis.API.Services
             await _operationRepository.UpdateAsync(operationId, sentUtc: DateTime.UtcNow, hash: hash);
         }
 
-        public async Task DeleteBroadcastAsync(IBroadcast broadcast)
+        public async Task<bool> DeleteBroadcastAsync(Guid operationId)
         {
-            await _broadcastRepository.DeleteAsync(broadcast.OperationId);
+            var operation = await _operationRepository.GetAsync(operationId, false);
 
-            if (broadcast.State == BroadcastState.Broadcasted)
+            if (operation != null &&
+                operation.State != OperationState.Deleted)
             {
-                await _broadcastInProgressRepository.DeleteAsync(broadcast.OperationId);
+                await _operationRepository.UpdateAsync(operationId, deletedUtc: DateTime.UtcNow);
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
-        //public async Task<decimal> RefreshAddressBalance(string address, long? block = null)
-        //{
-        //    var balance = await GetAddressBalance(address);
-
-        //    if (balance > 0)
-        //    {
-        //        var balancePositive = await _balancePositiveRepository.GetAsync(address);
-        //        if (balancePositive != null && balancePositive.Amount == balance)
-        //        {
-        //            return balance;
-        //        }
-
-        //        if (!block.HasValue)
-        //        {
-        //            block = await _stratisInsightClient.GetLatestBlockHeight();
-        //        }
-
-        //        await _balancePositiveRepository.SaveAsync(address, balance, block.Value);
-        //    }
-        //    else
-        //    {
-        //        await _balancePositiveRepository.DeleteAsync(address);
-        //    }
-
-        //    return balance;
-        //}
-
+     
         public async Task<IOperation> GetOperationAsync(Guid operationId, bool loadItems = true)
         {
             return await _operationRepository.GetAsync(operationId, loadItems);
@@ -335,7 +248,7 @@ namespace Lykke.Service.Stratis.API.Services
 
         public async Task<ISettings> LoadStoredSettingsAsync()
         {
-            return (await _settingsRepository.GetAsync()) ?? _settings;
+            return (await _settingsRepository.GetAsync()) ?? _apiSettings;
         }
 
         public Money CalcFee(Transaction tx, ISettings settings)
@@ -378,6 +291,63 @@ namespace Lykke.Service.Stratis.API.Services
             return false;
         }
 
+        public async Task HandleHistoryAsync()
+        {
+            //const string receiveCategory = "receive";
+            //const string sendCategory = "send";
+
+            //var settings = await LoadStoredSettingsAsync();
+
+            //var recent = await _blockchainReader.ListSinceBlockAsync(settings.LastBlockHash, settings.ConfirmationLevel);
+
+            //var recentTransactions = from t in recent.Transactions
+            //                         where t.Category == receiveCategory || t.Category == sendCategory
+            //                         where t.Confirmations >= settings.ConfirmationLevel
+            //                         group t by t.TxId into g
+            //                         select new
+            //                         {
+            //                             TimestampUtc = g.First().BlockTime.FromUnixDateTime(),
+            //                             Hash = g.Key,
+            //                         };
+
+            //var recorded = 0;
+
+            //foreach (var transaction in recentTransactions)
+            //{
+            //    var transactionActions = new RawTransactionAction[0];
+
+            //    var operation = await _operationRepository.GetAsync(transaction.Hash);
+
+            //    if (operation != null)
+            //    {
+            //        await _operationRepository.UpdateAsync(operation.OperationId, completedUtc: transaction.TimestampUtc);
+
+            //        transactionActions = operation.GetRawTransactionActions();
+            //    }
+            //    else
+            //    {
+            //        transactionActions = (await GetRawTransactionAsync(transaction.Hash)).GetActions();
+            //    }
+
+            //    foreach (var action in transactionActions)
+            //    {
+            //        if (await IsObservableAsync(action.Category, action.AffectedAddress))
+            //        {
+            //            await _historyRepository.UpsertAsync(action.Category, action.AffectedAddress, transaction.TimestampUtc, transaction.Hash,
+            //                operation?.OperationId, action.FromAddress, action.ToAddress, action.Amount, action.AssetId);
+
+            //            recorded++;
+            //        }
+            //    }
+            //}
+
+            //await SaveStoredSettingsAsync(recent.LastBlock);
+
+            //await _log.WriteInfoAsync(nameof(HandleHistoryAsync),
+            //    $"Range: [{settings.LastBlockHash} - {recent.LastBlock}]",
+            //    $"History handled. {recorded} of {recent.Transactions.Length} recorded");
+        }
+
         public async Task<IEnumerable<IHistoryItem>> GetHistoryAsync(ObservationCategory category, string address,
             string afterHash = null, int take = 100)
         {
@@ -398,8 +368,8 @@ namespace Lykke.Service.Stratis.API.Services
 
         public async Task<bool> TryCreateObservableAddressAsync(ObservationCategory category, string address)
         {
+            await _blockchainReader.ImportAddressAsync(address);
             var addressInfo = await _blockchainReader.ValidateAddressAsync(address);
-
             if (!addressInfo.IsValid)
             {
                 throw new InvalidOperationException($"Invalid Stratis address: {address}");
@@ -412,13 +382,10 @@ namespace Lykke.Service.Stratis.API.Services
 
             var observableAddress = await _addressRepository.GetAsync(category, address);
 
-            if (observableAddress == null)
-            {
-                await _addressRepository.CreateAsync(category, address);
-                return true;
-            }
+            if (observableAddress != null) return false;
+            await _addressRepository.CreateAsync(category, address);
+            return true;
 
-            return false;
         }
 
         public void EnsureSigned(Transaction transaction, ICoin[] coins)
@@ -434,5 +401,75 @@ namespace Lykke.Service.Stratis.API.Services
                 throw new InvalidOperationException(errors.ToStringViaSeparator(Environment.NewLine));
             }
         }
+
+        public async Task<(string continuation, IEnumerable<AddressBalance> items)> GetBalancesAsync(string continuation = null, int take = 100)
+        {
+            var settings = await LoadStoredSettingsAsync();
+            var balances = new List<AddressBalance>();
+            var addressQuery = await _addressRepository.GetByCategoryAsync(ObservationCategory.Balance, continuation, take);
+
+            if (addressQuery.items.Any())
+            {
+                var utxo = await _blockchainReader.ListUnspentAsync(settings.ConfirmationLevel, addressQuery.items.Select(x => x.Address).ToArray());
+
+                foreach (var group in utxo.GroupBy(x => x.Address))
+                {
+                    var lastTx = await GetRawTransactionAsync(
+                        group.OrderByDescending(x => x.Confirmations).First().TxId,
+                        restoreInputs: false);
+
+                    balances.Add(new AddressBalance
+                    {
+                        Address = group.Key,
+                        Balance = group.Sum(x => x.Amount),
+                        Asset = Asset.Stratis,
+                        BlockTime = lastTx.BlockTime
+                    });
+                }
+            }
+
+            if (!settings.SkipNodeCheck && !balances.Any() && !(await _blockchainReader.GetAddresssesAsync()).Any())
+            {
+                await _log.WriteWarningAsync(nameof(GetBalancesAsync),
+                    "NodeCheck", "It looks like Startis node is a new one. Consider re-import observable addresses.");
+            }
+
+            return (addressQuery.continuation, balances);
+        }
+
+
+        public async Task<RawTransaction> GetRawTransactionAsync(string transactionHash, bool restoreInputs = true)
+        {
+            async Task<RawTransaction> InternalGet(string hash)
+            {
+                var tx = await _blockchainReader.GetRawTransactionAsync(hash);
+                if (tx == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Transaction {hash} not found. Consider restarting zcashd daemon using txindex=1 option.");
+                }
+
+                return tx;
+            };
+
+            var curr = await InternalGet(transactionHash);
+
+            if (restoreInputs)
+            {
+                // TODO: use batch instead of subsequent queries
+
+                foreach (var vin in curr.Vin)
+                {
+                    var prev = await InternalGet(vin.TxId);
+                    var vout = prev.Vout.OrderBy(x => x.N).Skip((int)vin.Vout).First();
+
+                    vin.Addresses = vout.ScriptPubKey.Addresses;
+                    vin.Value = vout.Value;
+                }
+            }
+
+            return curr;
+        }
+
     }
 }

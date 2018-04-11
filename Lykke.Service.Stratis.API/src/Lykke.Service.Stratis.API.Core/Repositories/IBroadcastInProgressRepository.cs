@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Lykke.Service.Stratis.API.Core.Repositories
 {
-    public interface IBroadcastInProgressRepository
+    public interface IBroadcastInProgressRepository2
     {
         Task AddAsync(Guid operationId, string hash);
         Task DeleteAsync(Guid operationId);
